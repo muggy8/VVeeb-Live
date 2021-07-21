@@ -1,6 +1,6 @@
 {
-  "name": "com.muggy8.dying2d",
-  "displayName": "Dying2D",
+  "name": "com.muggy8.vveeb2d",
+  "displayName": "VVeeb2D",
   "version": "1.0.0",
   "description": "A sample Apache Cordova application that responds to the deviceready event.",
   "main": "index.js",

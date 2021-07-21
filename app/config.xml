@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.muggy8.dying2d" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
-    <name>Dying2D</name>
+<widget id="com.muggy8.vveeb2d" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>VVeeb2D</name>
     <description>
         A sample Apache Cordova application that responds to the deviceready event.
     </description>
