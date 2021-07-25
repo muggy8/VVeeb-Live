@@ -30,6 +30,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   google_ml_vision: ^0.0.6
   system_alert_window: ^0.5.0
+  camera: ^0.8.1+5
 
 dev_dependencies:
   flutter_test:

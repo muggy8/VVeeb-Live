@@ -41,5 +41,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+    <string>Camera required for face tracking</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Not needed for now but might be used with future update.</string>
 </dict>
 </plist>
