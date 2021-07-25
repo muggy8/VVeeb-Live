@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.muggy8.vveeb2d">
-   <application
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE " />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
         android:label="vveeb2d"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -38,4 +42,9 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
+    <application
+    android:name=".Application"
+    android:label="system_alert_window_example"
+    android:icon="@mipmap/ic_launcher" />
 </manifest>
