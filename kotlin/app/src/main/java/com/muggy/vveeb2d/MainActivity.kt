@@ -2,6 +2,7 @@ package com.muggy.vveeb2d
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -14,7 +15,6 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.*
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -27,10 +27,25 @@ class MainActivity : AppCompatActivity() {
 //    private lateinit var outputDirectory: File
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var faceDetector:FaceDetector
+    private lateinit var jsBindings: JavascriptBindings
 
+    @SuppressLint("JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val faceTrackingOptions:FaceDetectorOptions = FaceDetectorOptions.Builder()
+            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+            .setMinFaceSize(0.3F)
+            .build()
+
+        faceDetector = FaceDetection.getClient(faceTrackingOptions)
+
+        webview.loadUrl("https://muggy8.github.io/VVeeb2D/")
+        webview.settings.javaScriptEnabled = true
+        jsBindings = JavascriptBindings(this)
+        webview.addJavascriptInterface(jsBindings, "appHost")
 
         // Request camera permissions
         if (allPermissionsGranted()) {
@@ -46,14 +61,6 @@ class MainActivity : AppCompatActivity() {
 //        outputDirectory = getOutputDirectory()
 
         cameraExecutor = Executors.newSingleThreadExecutor()
-
-        val faceTrackingOptions:FaceDetectorOptions = FaceDetectorOptions.Builder()
-            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-            .setMinFaceSize(0.3F)
-            .build()
-
-        faceDetector = FaceDetection.getClient(faceTrackingOptions)
     }
 
     override fun onRequestPermissionsResult(
@@ -104,6 +111,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private class JavascriptBindings(private val context: Context) {
+        private var listeners: HashMap<String, MutableList<(Any)-> Any>> = HashMap<String, MutableList<(Any)-> Any>>()
+
+        fun on(event:String, callback:(Any)-> Any): () -> Boolean? {
+            if (listeners[event] == null){
+                listeners[event] = mutableListOf()
+                listeners[event]?.add(callback)
+            }
+            else{
+                listeners[event]?.add(callback)
+            }
+
+            return { listeners[event]?.remove(callback) }
+        }
+
+        fun emit(event: String, data: Any){
+            listeners[event]?.forEach({ callback -> callback(data) })
+        }
+    }
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -130,6 +156,8 @@ class MainActivity : AppCompatActivity() {
                         )
                         scanResults.text = resultsText;
 //                        println(resultsText)
+
+                        jsBindings.emit("face-data", face)
                     }
                 )
             )
