@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
 
     private class FaceTrackingAnalyzer(
         private val faceDetector:FaceDetector,
+        val onFaceFound : (List<Face>) -> Unit,
     ) : ImageAnalysis.Analyzer {
 
         @SuppressLint("UnsafeOptInUsageError")
@@ -88,12 +89,17 @@ class MainActivity : AppCompatActivity() {
                 val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
                 // Pass image to an ML Kit Vision API
                 val result = faceDetector.process(image)
-                    .addOnSuccessListener { faces ->
+                    .addOnSuccessListener({ faces ->
                         // Task completed successfully
-                    }
-                    .addOnFailureListener { e ->
+                        if (faces.size > 0){
+                            onFaceFound(faces)
+                        }
+                    })
+                    .addOnFailureListener({ e ->
                         // Task failed with an exception
-                    }
+                    })
+
+                result.addOnCompleteListener({ results -> imageProxy.close() });
             }
         }
     }
@@ -113,7 +119,19 @@ class MainActivity : AppCompatActivity() {
 
             faceAnalysis.setAnalyzer(
                 cameraExecutor,
-                FaceTrackingAnalyzer(faceDetector)
+                FaceTrackingAnalyzer(
+                    faceDetector,
+                    { faces: List<Face> ->
+                        val face: Face = faces[0]
+                        val resultsText:String = (
+                            "Face x: " + face.headEulerAngleX + "\n"
+                            + "Face Y: " + face.headEulerAngleY + "\n"
+                            + "Face Z: " + face.headEulerAngleZ + "\n"
+                        )
+                        scanResults.text = resultsText;
+//                        println(resultsText)
+                    }
+                )
             )
 
             // Preview
