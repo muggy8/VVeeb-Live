@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.webkit.WebSettings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -43,7 +44,11 @@ class MainActivity : AppCompatActivity() {
         faceDetector = FaceDetection.getClient(faceTrackingOptions)
 
         webview.loadUrl("https://muggy8.github.io/VVeeb2D/")
-        webview.settings.javaScriptEnabled = true
+        webview.settings.apply {
+            javaScriptEnabled = true
+            setDomStorageEnabled(true)
+            setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        }
         jsBindings = JavascriptBindings(this)
         webview.addJavascriptInterface(jsBindings, "appHost")
 
