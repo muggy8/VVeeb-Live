@@ -3,9 +3,17 @@ package com.muggy.vveeb2d
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.PixelFormat
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.WindowManager
 import android.webkit.WebSettings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -14,13 +22,13 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.face.*
+import com.google.mlkit.vision.face.Face
+import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetector
+import com.google.mlkit.vision.face.FaceDetectorOptions
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-
-
-typealias LumaListener = (luma: Double) -> Unit
 
 class MainActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
@@ -65,6 +73,12 @@ class MainActivity : AppCompatActivity() {
 
 //        outputDirectory = getOutputDirectory()
 
+        startOverlayButton.setOnClickListener { startOverlay() }
+
+        stopOverlayButton.setOnClickListener { if (wm != null){
+            stopOverlay()
+        } }
+
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
@@ -86,8 +100,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-//    private fun takePhoto() {}
 
     private class FaceTrackingAnalyzer(
         private val faceDetector:FaceDetector,
@@ -201,16 +213,45 @@ class MainActivity : AppCompatActivity() {
             baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
-//    private fun getOutputDirectory(): File {
-//        val mediaDir = externalMediaDirs.firstOrNull()?.let {
-//            File(it, resources.getString(R.string.app_name)).apply { mkdirs() } }
-//        return if (mediaDir != null && mediaDir.exists())
-//            mediaDir else filesDir
-//    }
-
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+    }
+
+    private fun getOverlayPermission(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                startActivityForResult(intent, 12345)
+            }
+        }
+    }
+
+    lateinit var wm:WindowManager
+    lateinit var overlayView: View
+    private fun startOverlay(){
+        if (!Settings.canDrawOverlays(this)){
+            getOverlayPermission()
+            return
+        }
+
+        val mParams: WindowManager.LayoutParams? = WindowManager.LayoutParams(
+            200,
+            200,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                    or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.OPAQUE)
+
+        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay, null)
+
+        wm = this.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        wm.addView(overlayView, mParams)
+    }
+
+    private fun stopOverlay(){
+        wm.removeView(overlayView)
     }
 
     companion object {
