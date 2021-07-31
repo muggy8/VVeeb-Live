@@ -1,0 +1,179 @@
+package com.muggy.vveeb2d
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.PixelFormat
+import android.os.Build
+import android.util.Log
+import android.view.*
+import android.webkit.WebSettings
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
+import com.google.mlkit.vision.face.Face
+import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetector
+import com.google.mlkit.vision.face.FaceDetectorOptions
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.overlay.view.*
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+
+
+class OverlayController(  // declaring required variables
+    private val context: Context
+) {
+    private val mView: View
+    private var mParams: WindowManager.LayoutParams? = null
+    private val mWindowManager: WindowManager
+    private val layoutInflater: LayoutInflater
+    @SuppressLint("JavascriptInterface")
+    fun open() {
+        try {
+            // check if the view is already
+            // inflated or present in the window
+            if (mView.windowToken == null) {
+                if (mView.parent == null) {
+                    mWindowManager.addView(mView, mParams)
+                }
+            }
+
+            val faceTrackingOptions: FaceDetectorOptions = FaceDetectorOptions.Builder()
+                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+                .setMinFaceSize(0.3F)
+                .build()
+
+            faceDetector = FaceDetection.getClient(faceTrackingOptions)
+
+            cameraExecutor = Executors.newSingleThreadExecutor()
+
+            mView.apply {
+                webview.loadUrl("https://muggy8.github.io/VVeeb2D/")
+                webview.settings.apply {
+                    javaScriptEnabled = true
+                    setDomStorageEnabled(true)
+                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                }
+                jsBindings = JavascriptBindings(context)
+                webview.addJavascriptInterface(jsBindings, "appHost")
+            }
+
+            startCamera()
+        } catch (e: Exception) {
+            Log.d("Error1", e.toString())
+        }
+    }
+
+    fun close() {
+        try {
+
+            cameraExecutor.shutdown()
+            // remove the view from the window
+            (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(mView)
+            // invalidate the view
+            mView.invalidate()
+            // remove all views
+            (mView.parent as ViewGroup).removeAllViews()
+
+            // the above steps are necessary when you are adding and removing
+            // the view simultaneously, it might give some exceptions
+        } catch (e: Exception) {
+            Log.d("Error2", e.toString())
+        }
+    }
+
+    init {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // set the layout parameters of the window
+            mParams = WindowManager.LayoutParams(
+                200,
+                200,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                    or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.OPAQUE,
+            )
+        }
+        // getting a LayoutInflater
+        layoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        // inflating the view with the custom layout we created
+        mView = layoutInflater.inflate(R.layout.overlay, null)
+        // set onClickListener on the remove button, which removes
+        // the view from the window
+        // Define the position of the
+        // window within the screen
+        mParams!!.gravity = Gravity.BOTTOM or Gravity.LEFT
+        mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+    }
+
+    private lateinit var cameraExecutor: ExecutorService
+    private lateinit var faceDetector: FaceDetector
+    private lateinit var jsBindings: JavascriptBindings
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+
+        cameraProviderFuture.addListener(Runnable {
+            // Used to bind the lifecycle of cameras to the lifecycle owner
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+
+            // setup our facetracker
+            val faceAnalysis: ImageAnalysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+
+            faceAnalysis.setAnalyzer(
+                cameraExecutor,
+                FaceTrackingAnalyzer(
+                    faceDetector,
+                    { faces: List<Face> ->
+                        val face: Face = faces[0]
+                        val resultsText:String = (
+                                "Face x: " + face.headEulerAngleX + "\n"
+                                        + "Face Y: " + face.headEulerAngleY + "\n"
+                                        + "Face Z: " + face.headEulerAngleZ + "\n"
+                                )
+                        mView.scanResults.text = resultsText;
+//                        println(resultsText)
+
+                        jsBindings.emit("face-data", face)
+                    }
+                )
+            )
+
+            // Preview
+            val preview = Preview.Builder()
+                .build()
+                .also {
+                    it.setSurfaceProvider(mView.viewFinder.surfaceProvider)
+                }
+
+            // Select back camera as a default
+            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+
+            try {
+                // Unbind use cases before rebinding
+                cameraProvider.unbindAll()
+
+                // Bind use cases to camera
+                cameraProvider.bindToLifecycle(
+                    context as LifecycleOwner,
+                    cameraSelector,
+                    faceAnalysis,
+                    preview
+                )
+
+            } catch(exc: Exception) {
+//                Log.e(MainActivity.TAG, "Use case binding failed", exc)
+                println("Use case binding failed")
+                println(exc)
+            }
+
+        }, ContextCompat.getMainExecutor(context))
+    }
+}
