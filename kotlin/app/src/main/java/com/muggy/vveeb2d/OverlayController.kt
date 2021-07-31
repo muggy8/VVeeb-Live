@@ -7,12 +7,15 @@ import android.os.Build
 import android.util.Log
 import android.view.*
 import android.webkit.WebSettings
+import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
@@ -25,7 +28,7 @@ import java.util.concurrent.Executors
 
 class OverlayController(  // declaring required variables
     private val context: Context
-) {
+){
     private val mView: View
     private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
@@ -112,6 +115,25 @@ class OverlayController(  // declaring required variables
 
     }
 
+    private class CustomLifecycle : LifecycleOwner {
+        private val lifecycleRegistry: LifecycleRegistry
+
+        init {
+            lifecycleRegistry = LifecycleRegistry(this);
+            lifecycleRegistry.markState(Lifecycle.State.CREATED)
+            lifecycleRegistry.markState(Lifecycle.State.STARTED)
+        }
+
+        fun setLifecycleState(newState:Lifecycle.State){
+            lifecycleRegistry.markState(newState)
+        }
+
+        override fun getLifecycle(): Lifecycle {
+            return lifecycleRegistry
+        }
+    }
+
+
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var faceDetector: FaceDetector
     private lateinit var jsBindings: JavascriptBindings
@@ -156,13 +178,15 @@ class OverlayController(  // declaring required variables
             // Select back camera as a default
             val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
+            val customLifecycle:CustomLifecycle = CustomLifecycle()
+
             try {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
                 cameraProvider.bindToLifecycle(
-                    context as LifecycleOwner,
+                    customLifecycle,
                     cameraSelector,
                     faceAnalysis,
                     preview
