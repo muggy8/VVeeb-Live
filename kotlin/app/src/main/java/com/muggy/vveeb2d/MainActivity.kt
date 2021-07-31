@@ -2,89 +2,28 @@ package com.muggy.vveeb2d
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Service
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.view.View
-import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.app.ServiceCompat.stopForeground
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.face.FaceDetector
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.concurrent.ExecutorService
 
 class MainActivity : AppCompatActivity() {
-
-//    private lateinit var outputDirectory: File
-//    private lateinit var cameraExecutor: ExecutorService
 
     @SuppressLint("JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-//        val faceTrackingOptions:FaceDetectorOptions = FaceDetectorOptions.Builder()
-//            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-//            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-//            .setMinFaceSize(0.3F)
-//            .build()
-//
-//        faceDetector = FaceDetection.getClient(faceTrackingOptions)
-//
-//        webview.loadUrl("https://muggy8.github.io/VVeeb2D/")
-//        webview.settings.apply {
-//            javaScriptEnabled = true
-//            setDomStorageEnabled(true)
-//            setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
-//        }
-//        jsBindings = JavascriptBindings(this)
-//        webview.addJavascriptInterface(jsBindings, "appHost")
-
-        // Request camera permissions
-//        if (allPermissionsGranted()) {
-//            startCamera()
-//        } else {
-//            ActivityCompat.requestPermissions(
-//                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
-//        }
-
-        // Set up the listener for take photo button
-//        camera_capture_button.setOnClickListener { takePhoto() }
-
-//        outputDirectory = getOutputDirectory()
-
         startOverlayButton.setOnClickListener { startOverlay() }
 
         stopOverlayButton.setOnClickListener { stopOverlay() }
-
-//        cameraExecutor = Executors.newSingleThreadExecutor()
     }
-
-//    override fun onRequestPermissionsResult(
-//        requestCode: Int,
-//        permissions: Array<String>,
-//        grantResults:
-//        IntArray
-//    ) {
-//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-//        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-//            if (allPermissionsGranted()) {
-//                startCamera()
-//            } else {
-//                Toast.makeText(this,
-//                    "Permissions not granted by the user.",
-//                    Toast.LENGTH_SHORT).show()
-//                finish()
-//            }
-//        }
-//    }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
@@ -93,6 +32,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopOverlay()
     }
 
     private fun getOverlayPermission(){
@@ -104,8 +44,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-//    lateinit var wm:WindowManager
-//    lateinit var overlayView: View
     private fun startOverlay(){
         if (!Settings.canDrawOverlays(this)){
             getOverlayPermission()
@@ -118,40 +56,30 @@ class MainActivity : AppCompatActivity() {
         }
 
         startService()
-//        val mParams: WindowManager.LayoutParams? = WindowManager.LayoutParams(
-//            200,
-//            200,
-//            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-//            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-//                    or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-//                    or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-//            PixelFormat.OPAQUE)
-//
-//        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay, null)
-//
-//        wm = this.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-//        wm.addView(overlayView, mParams)
     }
 
+    lateinit private var foregroundServiceIntent : Intent
     fun startService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // check if the user has already granted
             // the Draw over other apps permission
             if (Settings.canDrawOverlays(this)) {
                 // start the service based on the android version
+                foregroundServiceIntent = Intent(this, ForegroundService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(Intent(this, ForegroundService::class.java))
+                    startForegroundService(foregroundServiceIntent)
                 } else {
-                    startService(Intent(this, ForegroundService::class.java))
+                    startService(foregroundServiceIntent)
                 }
             }
-        } else {startService(Intent(this, ForegroundService::class.java))
+        } else {startService(foregroundServiceIntent)
         }
     }
 
     private fun stopOverlay(){
-//        wm.removeView(overlayView)
-//        stopForeground()
+        if (foregroundServiceIntent != null){
+            stopService(foregroundServiceIntent)
+        }
     }
 
     companion object {

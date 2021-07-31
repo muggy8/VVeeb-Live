@@ -15,6 +15,7 @@ class ForegroundService : Service() {
     override fun onBind(intent: Intent): IBinder? {
         throw UnsupportedOperationException("Not yet implemented")
     }
+    lateinit var overlay:OverlayController;
 
     override fun onCreate() {
         super.onCreate()
@@ -27,12 +28,17 @@ class ForegroundService : Service() {
 
         // create an instance of Window class
         // and display the content on screen
-        val window = OverlayController(this)
-        window.open()
+        overlay = OverlayController(this)
+        overlay.open()
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        overlay.close()
     }
 
     // for android version >=O we need to create

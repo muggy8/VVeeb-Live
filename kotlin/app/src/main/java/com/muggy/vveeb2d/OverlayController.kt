@@ -7,7 +7,6 @@ import android.os.Build
 import android.util.Log
 import android.view.*
 import android.webkit.WebSettings
-import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -20,7 +19,6 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.overlay.view.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -73,7 +71,7 @@ class OverlayController(  // declaring required variables
 
     fun close() {
         try {
-
+            customLifecycle.setLifecycleState(Lifecycle.State.DESTROYED)
             cameraExecutor.shutdown()
             // remove the view from the window
             (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(mView)
@@ -137,6 +135,7 @@ class OverlayController(  // declaring required variables
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var faceDetector: FaceDetector
     private lateinit var jsBindings: JavascriptBindings
+    private val customLifecycle:CustomLifecycle = CustomLifecycle()
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
@@ -177,8 +176,6 @@ class OverlayController(  // declaring required variables
 
             // Select back camera as a default
             val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-
-            val customLifecycle:CustomLifecycle = CustomLifecycle()
 
             try {
                 // Unbind use cases before rebinding
