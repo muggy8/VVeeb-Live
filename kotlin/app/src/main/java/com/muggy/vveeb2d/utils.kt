@@ -24,7 +24,14 @@ class JavascriptBindings(private val context: Context) {
     }
 
     fun emit(event: String, data: Any){
-        listeners[event]?.forEach({ callback -> callback(data) })
+        listeners[event]?.forEach({ callback ->
+            try {
+                callback(data)
+            }
+            catch (ouf: Error){
+                listeners[event]?.remove(callback)
+            }
+        })
     }
 }
 

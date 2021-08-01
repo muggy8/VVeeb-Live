@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.annotation.RequiresApi
@@ -12,10 +13,17 @@ import androidx.core.app.NotificationCompat
 
 
 class ForegroundService : Service() {
-    override fun onBind(intent: Intent): IBinder? {
-        throw UnsupportedOperationException("Not yet implemented")
+    class LocalBinder(private val instance: ForegroundService) : Binder() {
+        val service: ForegroundService
+            get() = instance
     }
-    lateinit var overlay:OverlayController;
+
+    private val binder: IBinder = LocalBinder(this)
+
+    override fun onBind(intent: Intent): IBinder? {
+        return binder
+    }
+    lateinit var overlay:OverlayController
 
     override fun onCreate() {
         super.onCreate()

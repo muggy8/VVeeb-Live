@@ -3,10 +3,13 @@ package com.muggy.vveeb2d
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.view.*
+import android.webkit.WebMessage
 import android.webkit.WebSettings
+import android.webkit.WebView
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -31,6 +34,8 @@ class OverlayController(  // declaring required variables
     private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
     private val layoutInflater: LayoutInflater
+    var windowWidth:Int = 400
+    var windowHeight: Int = 300
     @SuppressLint("JavascriptInterface")
     fun open() {
         try {
@@ -52,16 +57,18 @@ class OverlayController(  // declaring required variables
 
             cameraExecutor = Executors.newSingleThreadExecutor()
 
+            WebView.setWebContentsDebuggingEnabled(true);
+
             mView.apply {
                 webview.loadUrl("https://muggy8.github.io/VVeeb2D/")
                 webview.settings.apply {
                     javaScriptEnabled = true
                     setDomStorageEnabled(true)
-                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
                 }
-                jsBindings = JavascriptBindings(context)
-                webview.addJavascriptInterface(jsBindings, "appHost")
             }
+
+            mView.refreshDrawableState()
 
             startCamera()
         } catch (e: Exception) {
@@ -91,8 +98,8 @@ class OverlayController(  // declaring required variables
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // set the layout parameters of the window
             mParams = WindowManager.LayoutParams(
-                200,
-                200,
+                windowWidth,
+                windowHeight,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                     or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
@@ -130,11 +137,21 @@ class OverlayController(  // declaring required variables
             return lifecycleRegistry
         }
     }
+    fun resizeWindow(width: Int, height: Int){
+        mParams?.width = width
+        mParams?.height = height
+        windowWidth = width
+        windowHeight = height
 
+        mWindowManager.updateViewLayout(mView, mParams)
+    }
+
+    fun refreshView(){
+        mView.forceLayout()
+    }
 
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var faceDetector: FaceDetector
-    private lateinit var jsBindings: JavascriptBindings
     private val customLifecycle:CustomLifecycle = CustomLifecycle()
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -159,10 +176,17 @@ class OverlayController(  // declaring required variables
                                         + "Face Y: " + face.headEulerAngleY + "\n"
                                         + "Face Z: " + face.headEulerAngleZ + "\n"
                                 )
-                        mView.scanResults.text = resultsText;
-//                        println(resultsText)
+                        mView.scanResults.text = resultsText
+                        val payloadString:String = ("{"
+                                + "\"ParamAngleX\":${ face.headEulerAngleX },"
+                                + "\"ParamAngley\":${ face.headEulerAngleY },"
+                                + "\"ParamAnglez\":${ face.headEulerAngleZ }"
+                        + "}")
 
-                        jsBindings.emit("face-data", face)
+                        mView.webview.postWebMessage(
+                            WebMessage("{\"type\":\"params\", \"payload\": ${payloadString}}"),
+                            Uri.parse("com.muggy.vveeb2d")
+                        )
                     }
                 )
             )
