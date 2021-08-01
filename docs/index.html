@@ -1,22 +1,24 @@
+<!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>VVeeb2D Renderer</title>
-        <style>
-            html, body {
-                margin: 0;
-                overflow: hidden;
-            }
-            html, body, canvas {
-                height: 100vh;
-                width: 100vw;
-            }
-        </style>
-    </head>
-    <body>
-        <script src="./app/vendor/live2dcubismcore.min.js"></script>
-        <script src="./app/vendor/live2dcubismframework.min.js"></script>
-        <script src="./app/main.js"></script>
-    </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1900">
+  <title>TypeScript HTML App</title>
+  <style>
+    html, body {
+        margin: 0;
+        overflow: hidden;
+    }
+  </style>
+  <!-- Pollyfill script -->
+  <script src="https://unpkg.com/core-js-bundle@3.6.1/minified.js" defer></script>
+  <!-- Code that lets us interact with the parent enviroment -->
+  <script src = "./external-interface.js" defer></script>
+  <!-- Live2DCubismCore script -->
+  <script src = "./Core/live2dcubismcore.js" defer></script>
+  <!-- Build script -->
+  <script src = "./bundle.js" defer></script>
+</head>
+<body>
+</body>
 </html>
