@@ -3,10 +3,13 @@
     package="com.muggy.vveeb2d">
 
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
+    <uses-feature android:name="android.hardware.camera.ar" android:required="true" />
+
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
 
 
     <application
@@ -16,12 +19,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.VVeeb2D">
+
+        <meta-data android:name="com.google.ar.core" android:value="required" />
+
         <service
             android:foregroundServiceType="camera"
             android:name=".ForegroundService"
             android:enabled="true"
             android:exported="true"
         />
+
         <activity android:name=".MainActivity" android:configChanges="orientation|screenSize|screenLayout"
             >
             <intent-filter>

@@ -1,12 +1,10 @@
 package com.muggy.vveeb2d
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,10 +14,10 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import android.content.res.Configuration
+import com.google.ar.core.ArCoreApk
+import com.google.ar.core.exceptions.UnavailableException
 
 class MainActivity : AppCompatActivity() {
 
@@ -77,14 +75,14 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(
-            baseContext, it) == PackageManager.PERMISSION_GRANTED
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         stopOverlay()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isARCoreSupportedAndUpToDate()
     }
 
     private fun getOverlayPermission(){
@@ -92,6 +90,42 @@ class MainActivity : AppCompatActivity() {
             if (!Settings.canDrawOverlays(this)) {
                 val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
                 startActivityForResult(intent, 12345)
+            }
+        }
+    }
+
+    private fun isARCoreSupportedAndUpToDate(): Boolean {
+        return when (ArCoreApk.getInstance().checkAvailability(this)) {
+            ArCoreApk.Availability.SUPPORTED_INSTALLED -> true
+            ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD, ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED -> {
+                try {
+                    // Request ARCore installation or update if needed.
+                    when (ArCoreApk.getInstance().requestInstall(this, true)) {
+                        ArCoreApk.InstallStatus.INSTALL_REQUESTED -> {
+                            println("ARCore installation requested.")
+                            false
+                        }
+                        ArCoreApk.InstallStatus.INSTALLED -> true
+                    }
+                } catch (e: UnavailableException) {
+                    println("ARCore not installed" + e.toString())
+                    false
+                }
+            }
+
+            ArCoreApk.Availability.UNSUPPORTED_DEVICE_NOT_CAPABLE ->
+                // This device is not supported for AR.
+                false
+
+            ArCoreApk.Availability.UNKNOWN_CHECKING -> {
+                // ARCore is checking the availability with a remote query.
+                // This function should be called again after waiting 200 ms to determine the query result.
+                return ArCoreApk.getInstance().checkAvailability(this).isSupported
+            }
+            ArCoreApk.Availability.UNKNOWN_ERROR, ArCoreApk.Availability.UNKNOWN_TIMED_OUT -> {
+                // There was an error checking for AR availability. This may be due to the device being offline.
+                // Handle the error appropriately.
+                return false
             }
         }
     }
@@ -122,25 +156,22 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allPermissionsGranted() && Settings.canDrawOverlays(this)) {
-                startService()
-            } else {
-                Toast.makeText(this,
-                    "Not all permissions are granted. Please try again.",
-                    Toast.LENGTH_SHORT).show()
-            }
+        if (Settings.canDrawOverlays(this) && CameraPermissionHelper.hasCameraPermission(this)) {
+            startService()
+        } else {
+            Toast.makeText(this,
+                "Not all permissions are granted. Please try again.",
+                Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun startOverlay(){
-        if (!Settings.canDrawOverlays(this)){
-            getOverlayPermission()
+        if (!CameraPermissionHelper.hasCameraPermission(this)){
+            CameraPermissionHelper.requestCameraPermission(this)
             return
         }
-        if (!allPermissionsGranted()){
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+        if (!Settings.canDrawOverlays(this)){
+            getOverlayPermission()
             return
         }
 
@@ -148,7 +179,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     lateinit private var foregroundServiceIntent : Intent
-    fun startService() {
+    private fun startService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // check if the user has already granted
             // the Draw over other apps permission
@@ -178,10 +209,5 @@ class MainActivity : AppCompatActivity() {
         if (::overlayService.isInitialized){
             overlayService.overlay.refreshView()
         }
-    }
-
-    companion object {
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }

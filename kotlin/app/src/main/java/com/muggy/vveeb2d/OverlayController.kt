@@ -10,21 +10,7 @@ import android.view.*
 import android.webkit.WebMessage
 import android.webkit.WebSettings
 import android.webkit.WebView
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
-import com.google.mlkit.vision.face.Face
-import com.google.mlkit.vision.face.FaceDetection
-import com.google.mlkit.vision.face.FaceDetector
-import com.google.mlkit.vision.face.FaceDetectorOptions
 import kotlinx.android.synthetic.main.overlay.view.*
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 
 class OverlayController(  // declaring required variables
@@ -48,16 +34,6 @@ class OverlayController(  // declaring required variables
                 }
             }
 
-            val faceTrackingOptions: FaceDetectorOptions = FaceDetectorOptions.Builder()
-                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-                .setMinFaceSize(0.3F)
-                .build()
-
-            faceDetector = FaceDetection.getClient(faceTrackingOptions)
-
-            cameraExecutor = Executors.newSingleThreadExecutor()
-
             WebView.setWebContentsDebuggingEnabled(true);
 
             mView.apply {
@@ -69,7 +45,6 @@ class OverlayController(  // declaring required variables
                 }
             }
 
-            startCamera()
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }
@@ -77,8 +52,6 @@ class OverlayController(  // declaring required variables
 
     fun close() {
         try {
-            customLifecycle.setLifecycleState(Lifecycle.State.DESTROYED)
-            cameraExecutor.shutdown()
             // remove the view from the window
             (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(mView)
             // invalidate the view
@@ -119,23 +92,6 @@ class OverlayController(  // declaring required variables
 
     }
 
-    private class CustomLifecycle : LifecycleOwner {
-        private val lifecycleRegistry: LifecycleRegistry
-
-        init {
-            lifecycleRegistry = LifecycleRegistry(this);
-            lifecycleRegistry.markState(Lifecycle.State.CREATED)
-            lifecycleRegistry.markState(Lifecycle.State.STARTED)
-        }
-
-        fun setLifecycleState(newState:Lifecycle.State){
-            lifecycleRegistry.markState(newState)
-        }
-
-        override fun getLifecycle(): Lifecycle {
-            return lifecycleRegistry
-        }
-    }
     fun resizeWindow(width: Int, height: Int){
         mParams?.width = width
         mParams?.height = height
@@ -147,77 +103,5 @@ class OverlayController(  // declaring required variables
 
     fun refreshView(){
         mView.refreshDrawableState()
-    }
-
-    private lateinit var cameraExecutor: ExecutorService
-    private lateinit var faceDetector: FaceDetector
-    private val customLifecycle:CustomLifecycle = CustomLifecycle()
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-
-        cameraProviderFuture.addListener(Runnable {
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            // setup our facetracker
-            val faceAnalysis: ImageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-
-            faceAnalysis.setAnalyzer(
-                cameraExecutor,
-                FaceTrackingAnalyzer(
-                    faceDetector,
-                    { faces: List<Face> ->
-                        val face: Face = faces[0]
-                        val resultsText:String = (
-                                "Face x: " + face.headEulerAngleX + "\n"
-                                        + "Face Y: " + face.headEulerAngleY + "\n"
-                                        + "Face Z: " + face.headEulerAngleZ + "\n"
-                                )
-//                        mView.scanResults.text = resultsText
-                        val payloadString:String = ("{"
-                                + "\"ParamAngleX\":${ face.headEulerAngleX },"
-                                + "\"ParamAngley\":${ face.headEulerAngleY },"
-                                + "\"ParamAnglez\":${ face.headEulerAngleZ }"
-                        + "}")
-
-                        mView.webview.postWebMessage(
-                            WebMessage("{\"type\":\"params\", \"payload\": ${payloadString}}"),
-                            Uri.parse(rendererUrl)
-                        )
-                    }
-                )
-            )
-
-            // Preview
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(mView.viewFinder.surfaceProvider)
-                }
-
-            // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-
-            try {
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
-
-                // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    customLifecycle,
-                    cameraSelector,
-                    faceAnalysis,
-                    preview
-                )
-
-            } catch(exc: Exception) {
-//                Log.e(MainActivity.TAG, "Use case binding failed", exc)
-                println("Use case binding failed")
-                println(exc)
-            }
-
-        }, ContextCompat.getMainExecutor(context))
     }
 }
