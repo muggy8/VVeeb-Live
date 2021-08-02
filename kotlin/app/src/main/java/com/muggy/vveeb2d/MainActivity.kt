@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import android.content.res.Configuration
+import android.view.View
 import com.google.ar.core.ArCoreApk
 import com.google.ar.core.exceptions.UnavailableException
 
@@ -29,6 +30,10 @@ class MainActivity : AppCompatActivity() {
         startOverlayButton.setOnClickListener { startOverlay() }
 
         stopOverlayButton.setOnClickListener { stopOverlay() }
+
+        toggleRenderer.setOnClickListener { toggleOverlayRenderer() }
+
+        setViewStateToOverlaying()
 
         overlayWidth.setText("400")
         overlayWidth.addTextChangedListener(object : TextWatcher {
@@ -165,6 +170,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setViewStateToNotOverlaying(){
+        toggleRenderer.setVisibility(View.VISIBLE)
+        stopOverlayButton.setVisibility(View.VISIBLE)
+        startOverlayButton.setVisibility(View.GONE)
+    }
+    private fun setViewStateToOverlaying(){
+        toggleRenderer.setVisibility(View.GONE)
+        stopOverlayButton.setVisibility(View.GONE)
+        startOverlayButton.setVisibility(View.VISIBLE)
+    }
+
     private fun startOverlay(){
         if (!CameraPermissionHelper.hasCameraPermission(this)){
             CameraPermissionHelper.requestCameraPermission(this)
@@ -175,6 +191,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        setViewStateToNotOverlaying()
         startService()
     }
 
@@ -203,6 +220,11 @@ class MainActivity : AppCompatActivity() {
             unbindService(connection)
             stopService(foregroundServiceIntent)
         }
+        setViewStateToOverlaying()
+    }
+
+    private fun toggleOverlayRenderer(){
+        overlayService.overlay.toggleShowLive2DModel()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

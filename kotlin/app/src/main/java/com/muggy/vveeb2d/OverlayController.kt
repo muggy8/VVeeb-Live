@@ -11,8 +11,8 @@ import android.view.*
 import android.webkit.WebMessage
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.core.math.MathUtils.clamp
 import com.google.ar.core.*
-import com.muggy.vveeb2d.FastMath.clamp
 import kotlinx.android.synthetic.main.overlay.view.*
 import java.util.*
 import javax.microedition.khronos.egl.EGLConfig
@@ -42,6 +42,13 @@ class OverlayController(  // declaring required variables
         // I have no idea what i'm doing... i'm just copy pasting code here ;w;
         private val augmentedFaceRenderer = AugmentedFaceRenderer()
         private val backgroundRenderer:BackgroundRenderer = BackgroundRenderer()
+        private var showLive2DModel: Boolean = false
+
+        fun toggleShowLive2DModel():Boolean{
+            showLive2DModel = !showLive2DModel
+            return showLive2DModel
+        }
+
         override fun onSurfaceCreated(gl: GL10?, p1: EGLConfig?) {
             GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             backgroundRenderer.createOnGlThread(context);
@@ -73,6 +80,13 @@ class OverlayController(  // declaring required variables
                     return
                 }
 
+                // get the face first cuz we'll skip all the expensive rendering down the line if we aren't rendering the preview
+                val face:AugmentedFace = faces.first()
+                if (showLive2DModel){
+                    faceDetectedCallback(face)
+                    return
+                }
+
                 // If frame is ready, render camera preview image to the GL surface.
                 backgroundRenderer.draw(frame);
 
@@ -92,7 +106,6 @@ class OverlayController(  // declaring required variables
                 val colorCorrectionRgba = FloatArray(4)
                 frame.lightEstimate.getColorCorrection(colorCorrectionRgba, 0)
 
-                val face:AugmentedFace = faces.first()
                 if (face.trackingState == TrackingState.TRACKING){
                     // todo logic to pass faces to live2D renderer
                     // Face objects use transparency so they must be rendered back to front without depth write.
@@ -222,25 +235,27 @@ class OverlayController(  // declaring required variables
     }
 
     private fun onFaceTracking(face:AugmentedFace){
-        val quaternion = face.centerPose.getRotationQuaternion()
-        val eulerAngles = toAngles(
-            quaternion[0],
-            quaternion[1],
-            quaternion[2],
-            quaternion[3],
+        val quaternionValues = face.centerPose.getRotationQuaternion()
+        val eulerAngles:EulerAngles = toAngles(
+            quaternionValues[0].toDouble(),
+            quaternionValues[1].toDouble(),
+            quaternionValues[2].toDouble(),
+            quaternionValues[3].toDouble(),
         )
 
         val live2Dparams:String = ("{"
-                + "\"ParamAngleX\":${ clamp(eulerAngles[0], -30f, 30f) },"
-                + "\"ParamAngleY\":${ clamp(eulerAngles[2], -30f, 30f) },"
-                + "\"ParamAngleZ\":${ clamp(eulerAngles[1], -30f, 30f) },"
-            +"}")
+                + "\"ParamAngleX\":${ clamp(eulerAngles.yawDeg, -30.0, 30.0) },"
+                + "\"ParamAngleY\":${ clamp(eulerAngles.pitchDeg, -30.0, 30.0) },"
+                + "\"ParamAngleZ\":${ clamp(eulerAngles.rollDeg, -30.0, 30.0) }"
+            + "}")
 
         mView.apply {
-            webview.postWebMessage(
-                WebMessage("{\"type\":\"params\", \"payload\": ${live2Dparams}}"),
-                Uri.parse(rendererUrl)
-            )
+            webview.post(Runnable {
+                webview.postWebMessage(
+                    WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                    Uri.parse(rendererUrl)
+                )
+            })
         }
     }
 
@@ -257,4 +272,15 @@ class OverlayController(  // declaring required variables
     fun refreshView(){
         mView.refreshDrawableState()
     }
+
+    fun toggleShowLive2DModel(){
+        val showingLive2D:Boolean = arRenderer.toggleShowLive2DModel()
+        if (!showingLive2D){
+            surfaceView.visibility = View.VISIBLE
+        }
+        else {
+            surfaceView.visibility = View.GONE
+        }
+    }
+
 }

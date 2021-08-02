@@ -23,8 +23,6 @@
                 android:id="@+id/startOverlayButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_x="108dp"
-                android:layout_y="637dp"
                 android:text="Start Streamer Mode"
                 app:layout_constraintBottom_toTopOf="@+id/stopOverlayButton"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -34,9 +32,16 @@
                 android:id="@+id/stopOverlayButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_x="82dp"
-                android:layout_y="592dp"
                 android:text="Stop Streamer Mode"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <Button
+                android:id="@+id/toggleRenderer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Toggle Face Tracking View"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent" />

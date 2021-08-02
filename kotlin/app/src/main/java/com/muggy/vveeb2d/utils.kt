@@ -30,29 +30,47 @@ class JavascriptBindings(private val context: Context) {
     }
 }
 
-// copypasted from https://android.googlesource.com/platform/external/jmonkeyengine/+/59b2e6871c65f58fdad78cd7229c292f6a177578/engine/src/core/com/jme3/math/Quaternion.java
-fun toAngles(x:Float, y:Float, z:Float, w:Float): FloatArray {
-    var angles = FloatArray(3)
+class EulerAngles(
+    val heading:Double,
+    val attitude:Double,
+    val bank:Double,
+){
+    val yaw get() = heading
+    val pitch get() = bank
+    val roll get() = attitude
 
-    val sqw: Float = w * w
-    val sqx = (x * x).toFloat()
-    val sqy = (y * y).toFloat()
-    val sqz: Float = z * z
-    val unit = sqx + sqy + sqz + sqw // if normalized is one, otherwise
-    // is correction factor
-    val test: Float = x * y + z * w
-    if (test > 0.499 * unit) { // singularity at north pole
-        angles[1] = 2 * FastMath.atan2(x, w)
-        angles[2] = FastMath.HALF_PI
-        angles[0] = 0f
-    } else if (test < -0.499 * unit) { // singularity at south pole
-        angles[1] = -2 * FastMath.atan2(x, w)
-        angles[2] = -FastMath.HALF_PI
-        angles[0] = 0f
-    } else {
-        angles[1] = FastMath.atan2(2 * y * w - 2 * x * z, sqx - sqy - sqz + sqw) // roll or heading
-        angles[2] = FastMath.asin(2 * test / unit) // pitch or attitude
-        angles[0] = FastMath.atan2(2 * x * w - 2 * y * z, -sqx + sqy - sqz + sqw) // yaw or bank
+    val yawDeg get() = Math.toDegrees(yaw)
+    val pitchDeg get() = Math.toDegrees(pitch)
+    val rollDeg get() = Math.toDegrees(roll)
+}
+
+fun toAngles (x:Double, y:Double, z:Double, w:Double):EulerAngles {
+    val sqw = w*w;
+    val sqx = x*x;
+    val sqy = y*y;
+    val sqz = z*z;
+    val unit = sqx + sqy + sqz + sqw; // if normalised is one, otherwise is correction factor
+    val test = x*y + z*w;
+
+    var heading:Double
+    var attitude:Double
+    var bank:Double
+
+    if (test > 0.499*unit) { // singularity at north pole
+        heading = 2 * Math.atan2(x,w)
+        attitude = Math.PI/2
+        bank = 0.0
     }
-    return angles
+    if (test < -0.499*unit) { // singularity at south pole
+        heading = -2 * Math.atan2(x,w)
+        attitude = -Math.PI/2
+        bank = 0.0
+    }
+    else {
+        heading = Math.atan2(2*y*w-2*x*z , sqx - sqy - sqz + sqw)
+        attitude = Math.asin(2*test/unit)
+        bank = Math.atan2(2*x*w-2*y*z , -sqx + sqy - sqz + sqw)
+    }
+
+    return EulerAngles(heading, attitude, bank)
 }
