@@ -2,14 +2,17 @@ package com.muggy.vveeb2d
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.net.Uri
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Build
 import android.util.Log
 import android.view.*
+import android.webkit.WebMessage
 import android.webkit.WebSettings
 import android.webkit.WebView
 import com.google.ar.core.*
+import com.muggy.vveeb2d.FastMath.clamp
 import kotlinx.android.synthetic.main.overlay.view.*
 import java.util.*
 import javax.microedition.khronos.egl.EGLConfig
@@ -27,17 +30,18 @@ class OverlayController(  // declaring required variables
     var windowWidth: Int = 400
     var windowHeight: Int = 300
     private var arSession:Session
-    private val backgroundRenderer:BackgroundRenderer = BackgroundRenderer()
     private val displayRotationHelper: DisplayRotationHelper
 
     private class ARRenderer(
         private val context: Context,
         private val arSession: Session,
-        private val backgroundRenderer:BackgroundRenderer,
-        private val displayRotationHelper: DisplayRotationHelper
+        private val displayRotationHelper: DisplayRotationHelper,
+        private val faceDetectedCallback: (AugmentedFace)->Any,
     ):GLSurfaceView.Renderer {
-        private val augmentedFaceRenderer = AugmentedFaceRenderer()
+
         // I have no idea what i'm doing... i'm just copy pasting code here ;w;
+        private val augmentedFaceRenderer = AugmentedFaceRenderer()
+        private val backgroundRenderer:BackgroundRenderer = BackgroundRenderer()
         override fun onSurfaceCreated(gl: GL10?, p1: EGLConfig?) {
             GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             backgroundRenderer.createOnGlThread(context);
@@ -60,6 +64,18 @@ class OverlayController(  // declaring required variables
                 // UpdateMode.BLOCKING (it is by default), this will throttle the rendering to the
                 // camera framerate.
                 val frame: Frame = arSession.update()
+
+
+                // since we need to test the value of the faces first and we might not even render the output sometimes.
+                // we test to see if there's a face first before we do anything else
+                val faces:Collection<AugmentedFace> = arSession.getAllTrackables(AugmentedFace::class.java)
+                if (faces.size == 0){
+                    return
+                }
+
+                // If frame is ready, render camera preview image to the GL surface.
+                backgroundRenderer.draw(frame);
+
                 val camera = frame.camera
 
                 // Get projection matrix.
@@ -76,16 +92,6 @@ class OverlayController(  // declaring required variables
                 val colorCorrectionRgba = FloatArray(4)
                 frame.lightEstimate.getColorCorrection(colorCorrectionRgba, 0)
 
-                // If frame is ready, render camera preview image to the GL surface.
-                backgroundRenderer.draw(frame);
-
-                val faces:Collection<AugmentedFace> = arSession.getAllTrackables(AugmentedFace::class.java)
-
-                if (faces.size == 0){
-                    return
-                }
-
-
                 val face:AugmentedFace = faces.first()
                 if (face.trackingState == TrackingState.TRACKING){
                     // todo logic to pass faces to live2D renderer
@@ -100,6 +106,8 @@ class OverlayController(  // declaring required variables
                     augmentedFaceRenderer.draw(
                         projectionMatrix, viewMatrix, modelMatrix, colorCorrectionRgba, face
                     )
+
+                    faceDetectedCallback(face)
                 }
             }
             catch (ouf:Error) {
@@ -107,6 +115,7 @@ class OverlayController(  // declaring required variables
             }
         }
     }
+
     private var arRenderer:ARRenderer
     private val surfaceView: GLSurfaceView
 
@@ -145,7 +154,12 @@ class OverlayController(  // declaring required variables
         arSession.cameraConfig = cameraConfigList[0]
 
         displayRotationHelper = DisplayRotationHelper(context);
-        arRenderer = ARRenderer(context, arSession, backgroundRenderer, displayRotationHelper)
+        arRenderer = ARRenderer(
+            context,
+            arSession,
+            displayRotationHelper,
+            { face:AugmentedFace->onFaceTracking(face) }
+        )
 
         surfaceView = mView.surfaceview
         surfaceView.setPreserveEGLContextOnPause(true);
@@ -197,12 +211,36 @@ class OverlayController(  // declaring required variables
             displayRotationHelper.onPause()
             surfaceView.onPause()
 
+            arSession.pause()
             arSession.close()
 
             // the above steps are necessary when you are adding and removing
             // the view simultaneously, it might give some exceptions
         } catch (e: Exception) {
             Log.d("Error2", e.toString())
+        }
+    }
+
+    private fun onFaceTracking(face:AugmentedFace){
+        val quaternion = face.centerPose.getRotationQuaternion()
+        val eulerAngles = toAngles(
+            quaternion[0],
+            quaternion[1],
+            quaternion[2],
+            quaternion[3],
+        )
+
+        val live2Dparams:String = ("{"
+                + "\"ParamAngleX\":${ clamp(eulerAngles[0], -30f, 30f) },"
+                + "\"ParamAngleY\":${ clamp(eulerAngles[2], -30f, 30f) },"
+                + "\"ParamAngleZ\":${ clamp(eulerAngles[1], -30f, 30f) },"
+            +"}")
+
+        mView.apply {
+            webview.postWebMessage(
+                WebMessage("{\"type\":\"params\", \"payload\": ${live2Dparams}}"),
+                Uri.parse(rendererUrl)
+            )
         }
     }
 
