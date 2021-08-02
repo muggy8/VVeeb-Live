@@ -34,6 +34,7 @@ class OverlayController(  // declaring required variables
     private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
     private val layoutInflater: LayoutInflater
+    private val rendererUrl: String = "https://muggy8.github.io/VVeeb2D/"
     var windowWidth:Int = 400
     var windowHeight: Int = 300
     @SuppressLint("JavascriptInterface")
@@ -60,15 +61,13 @@ class OverlayController(  // declaring required variables
             WebView.setWebContentsDebuggingEnabled(true);
 
             mView.apply {
-                webview.loadUrl("https://muggy8.github.io/VVeeb2D/")
+                webview.loadUrl(rendererUrl)
                 webview.settings.apply {
                     javaScriptEnabled = true
                     setDomStorageEnabled(true)
                     setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
                 }
             }
-
-            mView.refreshDrawableState()
 
             startCamera()
         } catch (e: Exception) {
@@ -147,7 +146,7 @@ class OverlayController(  // declaring required variables
     }
 
     fun refreshView(){
-        mView.forceLayout()
+        mView.refreshDrawableState()
     }
 
     private lateinit var cameraExecutor: ExecutorService
@@ -176,7 +175,7 @@ class OverlayController(  // declaring required variables
                                         + "Face Y: " + face.headEulerAngleY + "\n"
                                         + "Face Z: " + face.headEulerAngleZ + "\n"
                                 )
-                        mView.scanResults.text = resultsText
+//                        mView.scanResults.text = resultsText
                         val payloadString:String = ("{"
                                 + "\"ParamAngleX\":${ face.headEulerAngleX },"
                                 + "\"ParamAngley\":${ face.headEulerAngleY },"
@@ -185,7 +184,7 @@ class OverlayController(  // declaring required variables
 
                         mView.webview.postWebMessage(
                             WebMessage("{\"type\":\"params\", \"payload\": ${payloadString}}"),
-                            Uri.parse("com.muggy.vveeb2d")
+                            Uri.parse(rendererUrl)
                         )
                     }
                 )

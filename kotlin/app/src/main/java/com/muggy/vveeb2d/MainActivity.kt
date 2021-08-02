@@ -35,14 +35,18 @@ class MainActivity : AppCompatActivity() {
         overlayWidth.setText("400")
         overlayWidth.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {
-                if (overlayService == null){
-                    return
+                if (::overlayService.isInitialized){
+                    try{
+                        overlayService.overlay.windowWidth = s.toString().toInt()
+                        overlayService.overlay.resizeWindow(
+                            overlayService.overlay.windowWidth,
+                            overlayService.overlay.windowHeight,
+                        )
+                    }
+                    catch (ouf: Error){
+                        // whatever
+                    }
                 }
-                overlayService.overlay.windowWidth = s.toString().toInt()
-                overlayService.overlay.resizeWindow(
-                    overlayService.overlay.windowWidth,
-                    overlayService.overlay.windowHeight,
-                )
             }
 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
@@ -53,14 +57,18 @@ class MainActivity : AppCompatActivity() {
         overlayHeight.setText("300")
         overlayHeight.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {
-                if (overlayService == null){
-                    return
+                if (::overlayService.isInitialized){
+                    try{
+                        overlayService.overlay.windowHeight = s.toString().toInt()
+                        overlayService.overlay.resizeWindow(
+                            overlayService.overlay.windowWidth,
+                            overlayService.overlay.windowHeight,
+                        )
+                    }
+                    catch (ouf: Error){
+                        // whatever
+                    }
                 }
-                overlayService.overlay.windowHeight = s.toString().toInt()
-                overlayService.overlay.resizeWindow(
-                    overlayService.overlay.windowWidth,
-                    overlayService.overlay.windowHeight,
-                )
             }
 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
@@ -160,14 +168,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopOverlay(){
-        if (foregroundServiceIntent != null){
+        if (::foregroundServiceIntent.isInitialized){
             unbindService(connection)
             stopService(foregroundServiceIntent)
         }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        if (overlayService != null){
+        if (::overlayService.isInitialized){
             overlayService.overlay.refreshView()
         }
     }

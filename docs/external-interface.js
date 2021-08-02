@@ -26,7 +26,7 @@
     }
 })(window, function(appHost){
     window.addEventListener("message", (event) => {
-        JSON.parse(event.data)
-        console.log(event.data)
+        let payload = JSON.parse(event.data)
+        appHost.emit(payload.type, payload.payload)
     }, false);
 });
