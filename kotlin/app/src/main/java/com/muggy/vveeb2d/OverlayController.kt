@@ -31,6 +31,7 @@ class OverlayController(  // declaring required variables
     var windowHeight: Int = 300
     private var arSession:Session
     private val displayRotationHelper: DisplayRotationHelper
+    private var showLive2DModel: Boolean = false
 
     private class ARRenderer(
         private val context: Context,
@@ -42,12 +43,6 @@ class OverlayController(  // declaring required variables
         // I have no idea what i'm doing... i'm just copy pasting code here ;w;
         private val augmentedFaceRenderer = AugmentedFaceRenderer()
         private val backgroundRenderer:BackgroundRenderer = BackgroundRenderer()
-        private var showLive2DModel: Boolean = false
-
-        fun toggleShowLive2DModel():Boolean{
-            showLive2DModel = !showLive2DModel
-            return showLive2DModel
-        }
 
         override fun onSurfaceCreated(gl: GL10?, p1: EGLConfig?) {
             GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -76,16 +71,13 @@ class OverlayController(  // declaring required variables
                 // since we need to test the value of the faces first and we might not even render the output sometimes.
                 // we test to see if there's a face first before we do anything else
                 val faces:Collection<AugmentedFace> = arSession.getAllTrackables(AugmentedFace::class.java)
+                println(faces.size)
                 if (faces.size == 0){
                     return
                 }
 
                 // get the face first cuz we'll skip all the expensive rendering down the line if we aren't rendering the preview
                 val face:AugmentedFace = faces.first()
-                if (showLive2DModel){
-                    faceDetectedCallback(face)
-                    return
-                }
 
                 // If frame is ready, render camera preview image to the GL surface.
                 backgroundRenderer.draw(frame);
@@ -206,6 +198,7 @@ class OverlayController(  // declaring required variables
                     setDomStorageEnabled(true)
                     setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
                 }
+                updateWebviewShowstate(showLive2DModel)
             }
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
@@ -244,13 +237,14 @@ class OverlayController(  // declaring required variables
         )
 
         val live2Dparams:String = ("{"
-                + "\"ParamAngleX\":${ clamp(eulerAngles.yawDeg, -30.0, 30.0) },"
-                + "\"ParamAngleY\":${ clamp(eulerAngles.pitchDeg, -30.0, 30.0) },"
+                + "\"ParamAngleX\":${ clamp(-eulerAngles.yawDeg, -30.0, 30.0) },"
+                + "\"ParamAngleY\":${ clamp(-eulerAngles.pitchDeg, -30.0, 30.0) },"
                 + "\"ParamAngleZ\":${ clamp(eulerAngles.rollDeg, -30.0, 30.0) }"
             + "}")
 
         mView.apply {
             webview.post(Runnable {
+                println(live2Dparams)
                 webview.postWebMessage(
                     WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
                     Uri.parse(rendererUrl)
@@ -274,12 +268,16 @@ class OverlayController(  // declaring required variables
     }
 
     fun toggleShowLive2DModel(){
-        val showingLive2D:Boolean = arRenderer.toggleShowLive2DModel()
-        if (!showingLive2D){
-            surfaceView.visibility = View.VISIBLE
+        showLive2DModel = !showLive2DModel
+        updateWebviewShowstate(showLive2DModel)
+    }
+
+    private fun updateWebviewShowstate(showingWebview: Boolean){
+        if (showingWebview){
+            mView.webview.visibility = View.VISIBLE
         }
         else {
-            surfaceView.visibility = View.GONE
+            mView.webview.visibility = View.INVISIBLE
         }
     }
 
