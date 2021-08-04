@@ -14,6 +14,7 @@ import android.webkit.WebView
 import androidx.core.math.MathUtils.clamp
 import com.google.ar.core.*
 import kotlinx.android.synthetic.main.overlay.view.*
+import java.nio.FloatBuffer
 import java.util.*
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -71,7 +72,6 @@ class OverlayController(  // declaring required variables
                 // since we need to test the value of the faces first and we might not even render the output sometimes.
                 // we test to see if there's a face first before we do anything else
                 val faces:Collection<AugmentedFace> = arSession.getAllTrackables(AugmentedFace::class.java)
-                println(faces.size)
                 if (faces.size == 0){
                     return
                 }
@@ -228,29 +228,90 @@ class OverlayController(  // declaring required variables
     }
 
     private fun onFaceTracking(face:AugmentedFace){
-        val quaternionValues = face.centerPose.getRotationQuaternion()
-        val eulerAngles:EulerAngles = toAngles(
-            quaternionValues[0].toDouble(),
-            quaternionValues[1].toDouble(),
-            quaternionValues[2].toDouble(),
-            quaternionValues[3].toDouble(),
+        mView.webview.post(Runnable {
+
+            // a list of params live2D supported params
+            //   'ParamAngleX',
+            //   'ParamAngleY',
+            //   'ParamAngleZ',
+            //   'ParamEyeLOpen',
+            //   'ParamEyeLSmile',
+            //   'ParamEyeROpen',
+            //   'ParamEyeRSmile',
+            //   'ParamEyeBallX',
+            //   'ParamEyeBallY',
+            //   'ParamEyeBallForm',
+            //   'ParamBrowLY',
+            //   'ParamBrowRY',
+            //   'ParamBrowLX',
+            //   'ParamBrowRX',
+            //   'ParamBrowLAngle',
+            //   'ParamBrowRAngle',
+            //   'ParamBrowLForm',
+            //   'ParamBrowRForm',
+            //   'ParamMouthForm',
+            //   'ParamMouthOpenY',
+            //   'ParamCheek',
+            //   'ParamBodyAngleX',
+            //   'ParamBodyAngleY',
+            //   'ParamBodyAngleZ',
+            //   'ParamBreath',
+            //   'ParamArmLA',
+            //   'ParamArmRA',
+            //   'ParamArmLB',
+            //   'ParamArmRB',
+            //   'ParamHandL',
+            //   'ParamHandR',
+            //   'ParamHairFront',
+            //   'ParamHairSide',
+            //   'ParamHairBack',
+            //   'ParamHairFluffy',
+            //   'ParamShoulderY',
+            //   'ParamBustX',
+            //   'ParamBustY',
+            //   'ParamBaseX',
+            //   'ParamBaseY',
+
+            // find the euler angles so live 2D knows how to rotate the face.
+            val quaternionValues = face.centerPose.getRotationQuaternion()
+            val eulerAngles:EulerAngles = toAngles(
+                quaternionValues[0].toDouble(),
+                quaternionValues[1].toDouble(),
+                quaternionValues[2].toDouble(),
+                quaternionValues[3].toDouble(),
+            )
+
+            // figure out mouth tracking stuff
+            val topLipCenter = getMeshVertex(face.meshVertices, 13)
+            val bottomLipCenter = getMeshVertex(face.meshVertices, 14)
+            val lipDistance = topLipCenter.distanceFrom(bottomLipCenter)
+            // lipDistance is generally between 0.05 and 0.0015
+            val distanceDecimal = mapNumber(lipDistance, 0.0015f, 0.05f, 0f, 1f)
+
+
+            val live2Dparams:String = ("{"
+                    + "\"ParamMouthOpenY\":${ logisticBias(clamp(distanceDecimal, 0f, 1f)) },"
+                    + "\"ParamAngleX\":${ clamp(-eulerAngles.yawDeg, -30.0, 30.0) },"
+                    + "\"ParamAngleY\":${ clamp(-eulerAngles.pitchDeg, -30.0, 30.0) },"
+                    + "\"ParamAngleZ\":${ clamp(eulerAngles.rollDeg, -30.0, 30.0) }"
+                    + "}")
+
+
+            mView.webview.postWebMessage(
+                WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                Uri.parse(rendererUrl)
+            )
+
+        })
+
+    }
+
+    private fun getMeshVertex(meshVertices: FloatBuffer, vertexIndex: Int): Vector3{
+        return Vector3(
+            meshVertices.get(vertexIndex * 3),
+            meshVertices.get((vertexIndex * 3) + 1),
+            meshVertices.get((vertexIndex * 3) + 2),
         )
-
-        val live2Dparams:String = ("{"
-                + "\"ParamAngleX\":${ clamp(-eulerAngles.yawDeg, -30.0, 30.0) },"
-                + "\"ParamAngleY\":${ clamp(-eulerAngles.pitchDeg, -30.0, 30.0) },"
-                + "\"ParamAngleZ\":${ clamp(eulerAngles.rollDeg, -30.0, 30.0) }"
-            + "}")
-
-        mView.apply {
-            webview.post(Runnable {
-                println(live2Dparams)
-                webview.postWebMessage(
-                    WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
-                    Uri.parse(rendererUrl)
-                )
-            })
-        }
     }
 
     // public apis for ipc with the main activity

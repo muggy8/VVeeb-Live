@@ -1,6 +1,8 @@
 package com.muggy.vveeb2d
 
 import android.content.Context
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 
 class JavascriptBindings(private val context: Context) {
@@ -44,6 +46,28 @@ class EulerAngles(
     val rollDeg get() = Math.toDegrees(roll)
 }
 
+class Vector3 (
+    val x: Float,
+    val y: Float,
+    val z: Float,
+) {
+    fun distanceFrom(otherVector: Vector3): Float{
+        return sqrt(
+            (otherVector.x - x).pow(2)
+            + (otherVector.y - y).pow(2)
+            + (otherVector.z - z).pow(2)
+        )
+    }
+
+    fun middlePointFrom(otherVector: Vector3): Vector3{
+        return Vector3(
+            (x + otherVector.x) / 2,
+            (y + otherVector.y) / 2,
+            (z + otherVector.z) / 2,
+        )
+    }
+}
+
 fun toAngles (x:Double, y:Double, z:Double, w:Double):EulerAngles {
     val sqw = w*w;
     val sqx = x*x;
@@ -73,4 +97,18 @@ fun toAngles (x:Double, y:Double, z:Double, w:Double):EulerAngles {
     }
 
     return EulerAngles(heading, attitude, bank)
+}
+
+fun mapNumber(
+    value: Float,
+    istart: Float,
+    istop: Float,
+    ostart: Float,
+    ostop: Float
+): Float {
+    return ostart + (ostop - ostart) * ((value - istart) / (istop - istart))
+}
+
+fun logisticBias (input:Float, a: Float = 40f, c: Float = 1f, k:Float = 14f): Float {
+    return c / (1f + (a * Math.E.toFloat().pow(-k).pow(input)))
 }
