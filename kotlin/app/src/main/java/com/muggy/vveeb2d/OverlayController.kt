@@ -288,6 +288,25 @@ class OverlayController(  // declaring required variables
             // lipDistance is generally between 0.05 and 0.0015
             val distanceDecimal = mapNumber(lipDistance, 0.0015f, 0.05f, 0f, 1f)
 
+            val mouthRight = getMeshVertex(face.meshVertices, 62)
+            val mouthLeft = getMeshVertex(face.meshVertices, 292)
+            val mouthEdgeCenter = mouthRight.middlePointFrom(mouthLeft)
+            val mouthLipTipCenter = topLipCenter.middlePointFrom(bottomLipCenter)
+            println("EdgeCenter: (${mouthEdgeCenter.x}, ${ mouthEdgeCenter.y}) | LipCenterY: (${ mouthLipTipCenter.x }, ${ mouthLipTipCenter.y }) | Delta: (${ mouthLipTipCenter.x - mouthEdgeCenter.x }, ${ mouthLipTipCenter.y - mouthEdgeCenter.y })")
+
+
+            // lines are p1 to p2 and p3 to p4
+//            val p1: Pt
+//            var p2: Pt
+//            val p3: Pt
+//            var p4: Pt
+//
+//            p1 = Pt(topLipCenter.x.toDouble(), topLipCenter.y.toDouble())
+//            p2 = Pt(bottomLipCenter.x.toDouble(), bottomLipCenter.y.toDouble())
+//            p3 = Pt(mouthRight.x.toDouble(), mouthRight.y.toDouble())
+//            p4 = Pt(mouthLeft.x.toDouble(), mouthLeft.y.toDouble())
+//            val points = lineSegmentLineSegmentIntersection(p1, p2, p3, p4)
+//            val point = points[0]
 
             val live2Dparams:String = ("{"
                     + "\"ParamMouthOpenY\":${ logisticBias(clamp(distanceDecimal, 0f, 1f)) },"
