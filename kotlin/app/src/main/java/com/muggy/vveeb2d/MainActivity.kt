@@ -27,57 +27,57 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        startOverlayButton.setOnClickListener { startOverlay() }
-
-        stopOverlayButton.setOnClickListener { stopOverlay() }
-
-        toggleRenderer.setOnClickListener { toggleOverlayRenderer() }
-
-        setViewStateToOverlaying()
-
-        overlayWidth.setText("400")
-        overlayWidth.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable) {
-                if (::overlayService.isInitialized){
-                    try{
-                        overlayService.overlay.windowWidth = s.toString().toInt()
-                        overlayService.overlay.resizeWindow(
-                            overlayService.overlay.windowWidth,
-                            overlayService.overlay.windowHeight,
-                        )
-                    }
-                    catch (ouf: Error){
-                        // whatever
-                    }
-                }
-            }
-
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-        })
-
-        overlayHeight.setText("300")
-        overlayHeight.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable) {
-                if (::overlayService.isInitialized){
-                    try{
-                        overlayService.overlay.windowHeight = s.toString().toInt()
-                        overlayService.overlay.resizeWindow(
-                            overlayService.overlay.windowWidth,
-                            overlayService.overlay.windowHeight,
-                        )
-                    }
-                    catch (ouf: Error){
-                        // whatever
-                    }
-                }
-            }
-
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-        })
+//        startOverlayButton.setOnClickListener { startOverlay() }
+//
+//        stopOverlayButton.setOnClickListener { stopOverlay() }
+//
+//        toggleRenderer.setOnClickListener { toggleOverlayRenderer() }
+//
+//        setViewStateToOverlaying()
+//
+//        overlayWidth.setText("400")
+//        overlayWidth.addTextChangedListener(object : TextWatcher {
+//            override fun afterTextChanged(s: Editable) {
+//                if (::overlayService.isInitialized){
+//                    try{
+//                        overlayService.overlay.windowWidth = s.toString().toInt()
+//                        overlayService.overlay.resizeWindow(
+//                            overlayService.overlay.windowWidth,
+//                            overlayService.overlay.windowHeight,
+//                        )
+//                    }
+//                    catch (ouf: Error){
+//                        // whatever
+//                    }
+//                }
+//            }
+//
+//            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+//
+//            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+//        })
+//
+//        overlayHeight.setText("300")
+//        overlayHeight.addTextChangedListener(object : TextWatcher {
+//            override fun afterTextChanged(s: Editable) {
+//                if (::overlayService.isInitialized){
+//                    try{
+//                        overlayService.overlay.windowHeight = s.toString().toInt()
+//                        overlayService.overlay.resizeWindow(
+//                            overlayService.overlay.windowWidth,
+//                            overlayService.overlay.windowHeight,
+//                        )
+//                    }
+//                    catch (ouf: Error){
+//                        // whatever
+//                    }
+//                }
+//            }
+//
+//            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+//
+//            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+//        })
     }
 
     override fun onDestroy() {
@@ -143,10 +143,10 @@ class MainActivity : AppCompatActivity() {
             val binder = service as ForegroundService.LocalBinder
             overlayService = binder.service
             mBound = true
-            overlayService.overlay.resizeWindow(
-                overlayWidth.text.toString().toInt(),
-                overlayHeight.text.toString().toInt(),
-            )
+//            overlayService.overlay.resizeWindow(
+//                overlayWidth.text.toString().toInt(),
+//                overlayHeight.text.toString().toInt(),
+//            )
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -171,14 +171,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setViewStateToNotOverlaying(){
-        toggleRenderer.setVisibility(View.VISIBLE)
-        stopOverlayButton.setVisibility(View.VISIBLE)
-        startOverlayButton.setVisibility(View.GONE)
+//        toggleRenderer.setVisibility(View.VISIBLE)
+//        stopOverlayButton.setVisibility(View.VISIBLE)
+//        startOverlayButton.setVisibility(View.GONE)
     }
     private fun setViewStateToOverlaying(){
-        toggleRenderer.setVisibility(View.GONE)
-        stopOverlayButton.setVisibility(View.GONE)
-        startOverlayButton.setVisibility(View.VISIBLE)
+//        toggleRenderer.setVisibility(View.GONE)
+//        stopOverlayButton.setVisibility(View.GONE)
+//        startOverlayButton.setVisibility(View.VISIBLE)
     }
 
     private fun startOverlay(){

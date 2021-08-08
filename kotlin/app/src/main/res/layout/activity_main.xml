@@ -7,92 +7,101 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:layout_editor_absoluteX="1dp"
-        tools:layout_editor_absoluteY="1dp">
+<!--    <ScrollView-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent"-->
+<!--        tools:layout_editor_absoluteX="1dp"-->
+<!--        tools:layout_editor_absoluteY="1dp">-->
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+<!--        <LinearLayout-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:orientation="vertical"-->
+<!--            android:padding="16dp">-->
 
-            <Button
-                android:id="@+id/startOverlayButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Start Streamer Mode"
-                app:layout_constraintBottom_toTopOf="@+id/stopOverlayButton"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+<!--            <Button-->
+<!--                android:id="@+id/startOverlayButton"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Start Streamer Mode"-->
+<!--                app:layout_constraintBottom_toTopOf="@+id/stopOverlayButton"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintStart_toStartOf="parent" />-->
 
-            <Button
-                android:id="@+id/stopOverlayButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Stop Streamer Mode"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+<!--            <Button-->
+<!--                android:id="@+id/stopOverlayButton"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Stop Streamer Mode"-->
+<!--                app:layout_constraintBottom_toBottomOf="parent"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintStart_toStartOf="parent" />-->
 
-            <Button
-                android:id="@+id/toggleRenderer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Toggle Face Tracking View"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+<!--            <Button-->
+<!--                android:id="@+id/toggleRenderer"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Toggle Face Tracking View"-->
+<!--                app:layout_constraintBottom_toBottomOf="parent"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintStart_toStartOf="parent" />-->
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
+<!--            <LinearLayout-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:orientation="horizontal">-->
 
-                <LinearLayout
-                    android:layout_height="wrap_content"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:paddingRight="8dp">
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Overlay Width"
-                        />
+<!--                <LinearLayout-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_weight="1"-->
+<!--                    android:orientation="vertical"-->
+<!--                    android:paddingRight="8dp">-->
+<!--                    <TextView-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:text="Overlay Width"-->
+<!--                        />-->
 
-                    <EditText
-                        android:id="@+id/overlayWidth"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ems="10"
-                        android:inputType="number" />
-                </LinearLayout>
+<!--                    <EditText-->
+<!--                        android:id="@+id/overlayWidth"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:ems="10"-->
+<!--                        android:inputType="number" />-->
+<!--                </LinearLayout>-->
 
-                <LinearLayout
-                    android:layout_height="wrap_content"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:paddingLeft="8dp">
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Overlay Height"
-                        />
-                    <EditText
-                        android:id="@+id/overlayHeight"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ems="10"
-                        android:inputType="number" />
-                </LinearLayout>
-            </LinearLayout>
+<!--                <LinearLayout-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_weight="1"-->
+<!--                    android:orientation="vertical"-->
+<!--                    android:paddingLeft="8dp">-->
+<!--                    <TextView-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:text="Overlay Height"-->
+<!--                        />-->
+<!--                    <EditText-->
+<!--                        android:id="@+id/overlayHeight"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:ems="10"-->
+<!--                        android:inputType="number" />-->
+<!--                </LinearLayout>-->
+<!--            </LinearLayout>-->
 
 
-        </LinearLayout>
-    </ScrollView>
+<!--        </LinearLayout>-->
+<!--    </ScrollView>-->
+
+    <FrameLayout
+        android:id="@+id/preview_display_layout"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_weight="1" app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
