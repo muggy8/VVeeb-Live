@@ -18,24 +18,25 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import com.google.mediapipe.components.CameraHelper.CameraFacing
-import com.google.mediapipe.components.CameraHelper.OnCameraStartedListener
-import com.google.mediapipe.components.CameraXPreviewHelper
-import com.google.mediapipe.components.ExternalTextureConverter
-import com.google.mediapipe.components.FrameProcessor
-import com.google.mediapipe.components.PermissionHelper
-import com.google.mediapipe.framework.AndroidAssetUtil
 import com.google.mediapipe.glutil.EglManager
-
+import com.google.mediapipe.formats.proto.LandmarkProto.NormalizedLandmarkList
+import android.util.Log
+import com.google.mediapipe.components.*
+import com.google.mediapipe.framework.*
+import com.google.mediapipe.components.ExternalTextureConverter
+import com.google.mediapipe.components.CameraXPreviewHelper
 
 class MainActivity : AppCompatActivity() {
 
     // copy-paste from mediapipe's arr example repo
     private val TAG: String? = "MainActivity"
-
-    private val BINARY_GRAPH_NAME = "face_detection_mobile_gpu.binarypb"
+    private val BINARY_GRAPH_NAME = "face_mesh_mobile_gpu.binarypb"
     private val INPUT_VIDEO_STREAM_NAME = "input_video"
     private val OUTPUT_VIDEO_STREAM_NAME = "output_video"
-    private val CAMERA_FACING = CameraFacing.FRONT
+    private val OUTPUT_LANDMARKS_STREAM_NAME = "face_mesh"
+    private val INPUT_NUM_FACES_SIDE_PACKET_NAME = "num_faces"
+    private val NUM_FACES = 1
+    private val CAMERA_FACING: CameraFacing = CameraHelper.CameraFacing.FRONT
 
     // Flips the camera-preview frames vertically before sending them into FrameProcessor to be
     // processed in a MediaPipe graph, and flips the processed frames back when they are displayed.
@@ -44,24 +45,24 @@ class MainActivity : AppCompatActivity() {
     private val FLIP_FRAMES_VERTICALLY = true
 
     // {@link SurfaceTexture} where the camera-preview frames can be accessed.
-    private var previewFrameTexture: SurfaceTexture? = null
+    private lateinit var previewFrameTexture: SurfaceTexture
 
     // {@link SurfaceView} that displays the camera-preview frames processed by a MediaPipe graph.
-    private var previewDisplayView: SurfaceView? = null
+    private lateinit var previewDisplayView: SurfaceView
 
     // Creates and manages an {@link EGLContext}.
-    private var eglManager: EglManager? = null
+    private lateinit var eglManager: EglManager
 
     // Sends camera-preview frames into a MediaPipe graph for processing, and displays the processed
     // frames onto a {@link Surface}.
-    private var processor: FrameProcessor? = null
+    private lateinit var processor: FrameProcessor
 
     // Converts the GL_TEXTURE_EXTERNAL_OES texture from Android camera into a regular texture to be
     // consumed by {@link FrameProcessor} and the underlying MediaPipe graph.
-    private var converter: ExternalTextureConverter? = null
+    private lateinit var converter: ExternalTextureConverter
 
     // Handles camera access via the {@link CameraX} Jetpack support library.
-    private var cameraHelper: CameraXPreviewHelper? = null
+    private lateinit var cameraHelper: CameraXPreviewHelper
     // copy-paste over
 
     init {
@@ -83,18 +84,41 @@ class MainActivity : AppCompatActivity() {
         // Initialize asset manager so that MediaPipe native libraries can access the app assets, e.g.,
         // binary graphs.
         AndroidAssetUtil.initializeNativeAssetManager(this)
-
         eglManager = EglManager(null)
         processor = FrameProcessor(
             this,
-            eglManager!!.getNativeContext(),
+            eglManager.nativeContext,
             BINARY_GRAPH_NAME,
             INPUT_VIDEO_STREAM_NAME,
             OUTPUT_VIDEO_STREAM_NAME
         )
-        processor!!.getVideoSurfaceOutput().setFlipY(FLIP_FRAMES_VERTICALLY)
+        processor
+            .videoSurfaceOutput
+            .setFlipY(FLIP_FRAMES_VERTICALLY)
 
         PermissionHelper.checkAndRequestCameraPermissions(this)
+        val packetCreator = processor.packetCreator
+        val inputSidePackets: MutableMap<String, Packet> = HashMap()
+        inputSidePackets[INPUT_NUM_FACES_SIDE_PACKET_NAME] = packetCreator.createInt32(NUM_FACES)
+        processor.setInputSidePackets(inputSidePackets)
+
+        // To show verbose logging, run:
+        // adb shell setprop log.tag.MainActivity VERBOSE
+
+        // To show verbose logging, run:
+        // adb shell setprop log.tag.MainActivity VERBOSE
+
+        processor.addPacketCallback(
+            OUTPUT_LANDMARKS_STREAM_NAME
+        ) { packet: Packet ->
+            Log.v(TAG, "Received multi-face landmarks packet.")
+            val multiHandLandmarks =
+                PacketGetter.getProtoVector(
+                    packet,
+                    NormalizedLandmarkList.parser()
+                )
+        }
+
 
 //        startOverlayButton.setOnClickListener { startOverlay() }
 //
@@ -156,9 +180,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        converter = ExternalTextureConverter(eglManager!!.context)
-        converter!!.setFlipY(FLIP_FRAMES_VERTICALLY)
-        converter!!.setConsumer(processor)
+        converter = ExternalTextureConverter(
+            eglManager.context, 2
+        )
+        converter.setFlipY(FLIP_FRAMES_VERTICALLY)
+        converter.setConsumer(processor)
         if (PermissionHelper.cameraPermissionsGranted(this)) {
             startCamera()
         }
@@ -166,12 +192,71 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        converter!!.close()
+        converter.close()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions!!, grantResults!!)
         PermissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    protected fun computeViewSize(width: Int, height: Int): Size {
+        return Size(width, height)
+    }
+
+    protected fun onPreviewDisplaySurfaceChanged(
+        holder: SurfaceHolder?, format: Int, width: Int, height: Int
+    ) {
+        // (Re-)Compute the ideal size of the camera-preview display (the area that the
+        // camera-preview frames get rendered onto, potentially with scaling and rotation)
+        // based on the size of the SurfaceView that contains the display.
+        val viewSize = computeViewSize(width, height)
+        val displaySize = cameraHelper.computeDisplaySizeFromViewSize(viewSize)
+        val isCameraRotated = cameraHelper.isCameraRotated
+
+        // Connect the converter to the camera-preview frames as its input (via
+        // previewFrameTexture), and configure the output width and height as the computed
+        // display size.
+        converter.setSurfaceTextureAndAttachToGLContext(
+            previewFrameTexture,
+            if (isCameraRotated) displaySize.height else displaySize.width,
+            if (isCameraRotated) displaySize.width else displaySize.height
+        )
+    }
+
+    private fun setupPreviewDisplayView() {
+        previewDisplayView.visibility = View.GONE
+        val viewGroup = findViewById<ViewGroup>(R.id.preview_display_layout)
+        viewGroup.addView(previewDisplayView)
+        previewDisplayView
+            .holder
+            .addCallback(
+                object : SurfaceHolder.Callback {
+                    override fun surfaceCreated(holder: SurfaceHolder) {
+                        processor.videoSurfaceOutput.setSurface(holder.surface)
+                    }
+
+                    override fun surfaceChanged(
+                        holder: SurfaceHolder,
+                        format: Int,
+                        width: Int,
+                        height: Int
+                    ) {
+                        onPreviewDisplaySurfaceChanged(holder, format, width, height)
+                    }
+
+                    override fun surfaceDestroyed(holder: SurfaceHolder) {
+                        processor.videoSurfaceOutput.setSurface(null)
+                    }
+                })
+    }
+
+    private fun startCamera() {
+        cameraHelper = CameraXPreviewHelper()
+        val cameraFacing = CameraFacing.FRONT
+        cameraHelper.startCamera(
+            this, cameraFacing,  /*unusedSurfaceTexture=*/null, null
+        )
     }
 
     private fun getOverlayPermission(){
@@ -181,39 +266,6 @@ class MainActivity : AppCompatActivity() {
                 startActivityForResult(intent, 12345)
             }
         }
-    }
-
-    private fun setupPreviewDisplayView() {
-        previewDisplayView!!.visibility = View.GONE
-        val viewGroup:ViewGroup = findViewById(R.id.preview_display_layout)
-        viewGroup.addView(previewDisplayView)
-        previewDisplayView!!
-            .getHolder()
-            .addCallback(
-                object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(holder: SurfaceHolder) {
-                        processor!!.videoSurfaceOutput.setSurface(holder.surface)
-                    }
-
-                    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                        // (Re-)Compute the ideal size of the camera-preview display (the area that the
-                        // camera-preview frames get rendered onto, potentially with scaling and rotation)
-                        // based on the size of the SurfaceView that contains the display.
-                        val viewSize = Size(width, height)
-                        val displaySize: Size = cameraHelper!!.computeDisplaySizeFromViewSize(viewSize)
-
-                        // Connect the converter to the camera-preview frames as its input (via
-                        // previewFrameTexture), and configure the output width and height as the computed
-                        // display size.
-                        converter!!.setSurfaceTextureAndAttachToGLContext(
-                            previewFrameTexture, displaySize.getWidth(), displaySize.getHeight()
-                        )
-                    }
-
-                    override fun surfaceDestroyed(holder: SurfaceHolder) {
-                        processor!!.videoSurfaceOutput.setSurface(null)
-                    }
-                })
     }
 
     private lateinit var overlayService: ForegroundService
@@ -234,19 +286,6 @@ class MainActivity : AppCompatActivity() {
             mBound = false
         }
     }
-
-    private fun startCamera() {
-        cameraHelper = CameraXPreviewHelper()
-        cameraHelper!!.setOnCameraStartedListener(
-            OnCameraStartedListener { surfaceTexture: SurfaceTexture ? ->
-                previewFrameTexture = surfaceTexture
-                // Make the display view visible to start showing the preview. This triggers the
-                // SurfaceHolder.Callback added to (the holder of) previewDisplayView.
-                previewDisplayView!!.visibility = View.VISIBLE
-            })
-        cameraHelper!!.startCamera(this, CAMERA_FACING,  /*surfaceTexture=*/null)
-    }
-
 
     private fun setViewStateToNotOverlaying(){
 //        toggleRenderer.setVisibility(View.VISIBLE)
