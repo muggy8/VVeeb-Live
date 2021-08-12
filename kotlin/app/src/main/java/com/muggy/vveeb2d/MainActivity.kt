@@ -255,6 +255,9 @@ open class MediapipeSupport : AppCompatActivity() {
             .setFlipY(
                 FLIP_FRAMES_VERTICALLY
             )
+
+        cameraHelper = CameraXPreviewHelper()
+
         PermissionHelper.checkAndRequestCameraPermissions(this)
 
         processor.addPacketCallback(
@@ -300,6 +303,7 @@ open class MediapipeSupport : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         converter.close()
+        previewDisplayView.setVisibility(View.GONE);
     }
 
     override fun onRequestPermissionsResult(
@@ -313,6 +317,7 @@ open class MediapipeSupport : AppCompatActivity() {
     protected fun onCameraStarted(surfaceTexture: SurfaceTexture?) {
         if (surfaceTexture != null) {
             previewFrameTexture = surfaceTexture
+            previewDisplayView.setVisibility(View.VISIBLE);
         }
 
         if (!haveAddedSidePackets) {
@@ -332,7 +337,6 @@ open class MediapipeSupport : AppCompatActivity() {
     }
 
     fun startCamera() {
-        cameraHelper = CameraXPreviewHelper()
         cameraHelper.setOnCameraStartedListener { surfaceTexture: SurfaceTexture? ->
             onCameraStarted(
                 surfaceTexture
@@ -340,7 +344,11 @@ open class MediapipeSupport : AppCompatActivity() {
         }
         val cameraFacing = CameraFacing.FRONT
         cameraHelper.startCamera(
-            this, cameraFacing, /*unusedSurfaceTexture=*/ null, cameraTargetResolution());
+            this,
+            cameraFacing, /*unusedSurfaceTexture=*/
+            null,
+            cameraTargetResolution()
+        );
     }
 
     protected fun computeViewSize(width: Int, height: Int): Size {
@@ -348,8 +356,9 @@ open class MediapipeSupport : AppCompatActivity() {
     }
 
     protected fun onPreviewDisplaySurfaceChanged(
-        holder: SurfaceHolder?, format: Int, width: Int, height: Int
+        holder: SurfaceHolder, format: Int, width: Int, height: Int
     ) {
+        previewDisplayView.setVisibility(View.GONE);
         // (Re-)Compute the ideal size of the camera-preview display (the area that the
         // camera-preview frames get rendered onto, potentially with scaling and rotation)
         // based on the size of the SurfaceView that contains the display.
