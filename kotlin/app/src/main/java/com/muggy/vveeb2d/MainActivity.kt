@@ -226,11 +226,11 @@ open class MediapipeSupport : AppCompatActivity() {
     // consumed by {@link FrameProcessor} and the underlying MediaPipe graph.
     private lateinit var converter: ExternalTextureConverter
 
-    protected val EYE_TRACKING_BINARY:String = "iris_tracking_gpu.binarypb"
+    protected val EYE_TRACKING_BINARY:String = "face_mesh_and_iris_mobile.binarypb"
     protected val INPUT_STREAM_NAME:String = "input_video"
     protected val OUTPUT_STREAM_NAME:String = "output_video"
     protected val FOCAL_LENGTH_STREAM_NAME:String = "focal_length_pixel"
-    protected val OUTPUT_LANDMARKS_STREAM_NAME:String = "face_landmarks_with_iris"
+    protected val OUTPUT_LANDMARKS_STREAM_NAME:String = "iris_landmarks"
     protected val FLIP_FRAMES_VERTICALLY:Boolean = true
     protected val NUM_BUFFERS:Int = 2
 
@@ -278,6 +278,11 @@ open class MediapipeSupport : AppCompatActivity() {
                             + "] #Landmarks for face (including iris): "
                             + landmarks.landmarkCount
                 )
+
+                println("point 1: [${landmarks.getLandmark(1).x}, ${landmarks.getLandmark(1).y}, ${landmarks.getLandmark(1).z}]")
+
+
+
             } catch (e: InvalidProtocolBufferException) {
                 Log.e(TAG, "Couldn't Exception received - $e")
                 return@addPacketCallback
@@ -369,11 +374,14 @@ open class MediapipeSupport : AppCompatActivity() {
         // Connect the converter to the camera-preview frames as its input (via
         // previewFrameTexture), and configure the output width and height as the computed
         // display size.
-        converter.setSurfaceTextureAndAttachToGLContext(
-            previewFrameTexture,
-            if (isCameraRotated) displaySize.height else displaySize.width,
-            if (isCameraRotated) displaySize.width else displaySize.height
-        )
+        if (this::previewFrameTexture.isInitialized) {
+            converter.setSurfaceTextureAndAttachToGLContext(
+                previewFrameTexture,
+                if (isCameraRotated) displaySize.height else displaySize.width,
+                if (isCameraRotated) displaySize.width else displaySize.height
+            )
+        }
+
     }
 
     private fun setupPreviewDisplayView() {
