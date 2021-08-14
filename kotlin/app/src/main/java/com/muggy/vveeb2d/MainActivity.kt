@@ -230,7 +230,7 @@ open class MediapipeSupport : AppCompatActivity() {
     protected val INPUT_STREAM_NAME:String = "input_video"
     protected val OUTPUT_STREAM_NAME:String = "output_video"
     protected val FOCAL_LENGTH_STREAM_NAME:String = "focal_length_pixel"
-    protected val OUTPUT_LANDMARKS_STREAM_NAME:String = "iris_landmarks"
+    protected val OUTPUT_LANDMARKS_STREAM_NAME:String = "multi_face_geometry"
     protected val FLIP_FRAMES_VERTICALLY:Boolean = true
     protected val NUM_BUFFERS:Int = 2
 
