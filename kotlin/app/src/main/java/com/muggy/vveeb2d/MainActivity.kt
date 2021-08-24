@@ -38,10 +38,6 @@ import com.google.protobuf.InvalidProtocolBufferException
 
 import com.google.mediapipe.framework.PacketGetter
 
-
-
-
-
 class MainActivity : MediapipeSupport() {
 
     @SuppressLint("JavascriptInterface")
