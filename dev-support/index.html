@@ -1,0 +1,33 @@
+<html>
+    <head>
+        <script>
+
+        fetch("landmarks-front.json")
+            .then(owo=>owo.json())
+            .then(landmarks=>landmarks.forEach((landmark, index)=>{
+                let div = document.createElement("div")
+                div.classList.add("point")
+                div.id = index
+                div.setAttribute("style", `--xpos: ${landmark.x}; --ypos: ${landmark.y}`)
+
+                document.body.appendChild(div)
+            }))
+        </script>
+        
+        <style>
+            .point {
+                padding: 1px;
+                border-radius: 1px;
+                transform: translate(calc(var(--xpos, 0) * 100vw), calc(var(--ypos, 0) * 100vh));
+                background-color: black;
+                display: inline-block;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+        </style>
+    </head>
+    <body>
+        
+    </body>
+</html>
