@@ -80,7 +80,6 @@ class OverlayController (  // declaring required variables
 
     fun open() {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
-        mediapipeManager.startTracking()
         try {
             // check if the view is already
             // inflated or present in the window
@@ -104,6 +103,7 @@ class OverlayController (  // declaring required variables
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }
+        mediapipeManager.startTracking()
     }
 
     fun close() {
@@ -125,7 +125,8 @@ class OverlayController (  // declaring required variables
     }
 
     private fun onFaceTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-        mView.webview.post(Runnable {
+//        mView.webview.post(Runnable {
+            println(pointsOfIntrest)
 
             // a list of params live2D supported params
             //   'ParamAngleX',
@@ -183,7 +184,7 @@ class OverlayController (  // declaring required variables
 //                Uri.parse(rendererUrl)
 //            )
 
-        })
+//        })
 
     }
 
