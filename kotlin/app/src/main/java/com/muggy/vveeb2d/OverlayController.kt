@@ -42,7 +42,6 @@ class OverlayController (  // declaring required variables
     private val rendererUrl: String = "https://muggy8.github.io/VVeeb2D/"
     var windowWidth: Int = 400
     var windowHeight: Int = 300
-    private var showLive2DModel: Boolean = false
     private var mediapipeManager:MediapipeManager
     private var lifecycleRegistry: LifecycleRegistry
 
@@ -101,7 +100,6 @@ class OverlayController (  // declaring required variables
                     setDomStorageEnabled(true)
                     setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
                 }
-                updateWebviewShowstate(showLive2DModel)
             }
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
@@ -171,33 +169,47 @@ class OverlayController (  // declaring required variables
         //   'ParamBaseX',
         //   'ParamBaseY',
 
-        val faceCenterApprox = Vector3.pointAvarage(pointsOfIntrest.vectors.noseBridgeLeft, pointsOfIntrest.vectors.noseBridgeRight, pointsOfIntrest.vectors.mouthLeft, pointsOfIntrest.vectors.mouthRight)
-
-        // figure out facing left and right
-        val facingDirectionMagnitude = faceCenterApprox.x - pointsOfIntrest.vectors.noseTip.x
-
-        // figure out facing updown direction
-        val rearNoseBridgeCenter = pointsOfIntrest.vectors.faceMeasureLeft.middlePointFrom(pointsOfIntrest.vectors.faceMeasureRight)
-        val faceUpDownMagnitude = rearNoseBridgeCenter.y - pointsOfIntrest.vectors.noseBridgeCenter.y
-
-        // figure out head rotation
-        val verticalCenter = pointsOfIntrest.vectors.headTop.middlePointFrom(pointsOfIntrest.vectors.chin)
-        val deltaFaceY = pointsOfIntrest.vectors.chin.y - verticalCenter.y
-        val deltaFaceX = pointsOfIntrest.vectors.chin.x - verticalCenter.x
-        val faceAngle = Math.atan((deltaFaceX / deltaFaceY).toDouble())
-//
-//        println("facingDirectionMagnitude: ${facingDirectionMagnitude}")
-//        println("faceUpDownMagnitude: ${faceUpDownMagnitude}")
-//        println("faceAngle: ${faceAngle}")
-
-        val live2Dparams:String = ("{"
-            + "\"ParamAngleX\":${ clamp(facingDirectionMagnitude * 500, -30.0f, 30.0f) },"
-            + "\"ParamAngleY\":${ clamp((faceUpDownMagnitude - 0.05) * 10 * 30, -30.0, 30.0) },"
-            + "\"ParamAngleZ\":${ clamp(Math.toDegrees(faceAngle), -30.0, 30.0) }"
-        + "}")
-        println (live2Dparams)
 
         mView.webview.post(Runnable {
+            val faceCenterApprox = Vector3.pointAvarage(pointsOfIntrest.vectors.noseBridgeLeft, pointsOfIntrest.vectors.noseBridgeRight, pointsOfIntrest.vectors.mouthLeft, pointsOfIntrest.vectors.mouthRight)
+
+            // figure out facing left and right
+            val facingDirectionMagnitude = pointsOfIntrest.vectors.noseTip.x - faceCenterApprox.x
+
+            // figure out facing updown direction
+            val rearNoseBridgeCenter = pointsOfIntrest.vectors.faceMeasureLeft.middlePointFrom(pointsOfIntrest.vectors.faceMeasureRight)
+            var faceUpDownMagnitude = rearNoseBridgeCenter.distanceFrom(pointsOfIntrest.vectors.noseBridgeCenter)
+            if (pointsOfIntrest.vectors.noseBridgeCenter.y > rearNoseBridgeCenter.y){
+                faceUpDownMagnitude = -faceUpDownMagnitude
+            }
+
+            // figure out head rotation
+            val verticalCenter = pointsOfIntrest.vectors.headTop.middlePointFrom(pointsOfIntrest.vectors.chin)
+            val deltaFaceY = pointsOfIntrest.vectors.chin.y - verticalCenter.y
+            val deltaFaceX = pointsOfIntrest.vectors.chin.x - verticalCenter.x
+            val faceAngle = Math.atan((deltaFaceX / deltaFaceY).toDouble())
+
+            // figure out mouth open
+            val mouthOpenness = pointsOfIntrest.vectors.lipTop.distanceFrom(pointsOfIntrest.vectors.lipBottom)
+
+            // figure out mouth happiness
+            val mouthCenter = Vector3.pointAvarage(pointsOfIntrest.vectors.mouthLeft, pointsOfIntrest.vectors.mouthRight, pointsOfIntrest.vectors.lipTop, pointsOfIntrest.vectors.lipBottom)
+            val mouthCenterHoriz = pointsOfIntrest.vectors.mouthLeft.middlePointFrom(pointsOfIntrest.vectors.mouthRight)
+            var mouthCenterOffset = mouthCenterHoriz.distanceFrom(mouthCenter)
+            if (mouthCenter.y > mouthCenterHoriz.y){
+                mouthCenterOffset = -mouthCenterOffset
+            }
+
+            val live2Dparams:String = ("{"
+                    + "\"ParamMouthForm\":${ clamp((mouthCenterOffset * -70) + 0.3f, -1.0f, 1.0f) },"
+                    + "\"ParamMouthOpenY\":${ clamp(logisticBias(mouthOpenness * 5), 0.0f, 1.0f) },"
+                    + "\"ParamAngleX\":${ clamp(facingDirectionMagnitude * 500, -30.0f, 30.0f) },"
+                    + "\"ParamAngleY\":${ clamp((faceUpDownMagnitude - 0.05) * 10 * 30, -30.0, 30.0) },"
+                    + "\"ParamAngleZ\":${ clamp(-Math.toDegrees(faceAngle), -30.0, 30.0) }"
+                    + "}")
+
+            println(live2Dparams)
+
             mView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
                 Uri.parse(rendererUrl)
@@ -220,21 +232,6 @@ class OverlayController (  // declaring required variables
     fun refreshView(){
         mView.refreshDrawableState()
     }
-
-    fun toggleShowLive2DModel(){
-        showLive2DModel = !showLive2DModel
-        updateWebviewShowstate(showLive2DModel)
-    }
-
-    private fun updateWebviewShowstate(showingWebview: Boolean){
-        if (showingWebview){
-            mView.webview.visibility = View.VISIBLE
-        }
-        else {
-            mView.webview.visibility = View.INVISIBLE
-        }
-    }
-
 }
 
 open class MediapipeManager (
@@ -408,20 +405,20 @@ open class MediapipeManager (
         val vectors:PointsOfIntrestVectors
         init{
             vectors = PointsOfIntrestVectors(
-                Vector3(noseTip.x, noseTip.y, noseTip.z),
-                Vector3(noseLeft.x, noseLeft.y, noseLeft.z),
-                Vector3(noseRight.x, noseRight.y, noseRight.z),
-                Vector3(lipTop.x, lipTop.y, lipTop.z),
-                Vector3(lipBottom.x, lipBottom.y, lipBottom.z),
-                Vector3(mouthLeft.x, mouthLeft.y, mouthLeft.z),
-                Vector3(mouthRight.x, mouthRight.y, mouthRight.z),
-                Vector3(headTop.x, headTop.y, headTop.z),
-                Vector3(chin.x, chin.y, chin.z),
-                Vector3(noseBridgeLeft.x, noseBridgeLeft.y, noseBridgeLeft.z),
-                Vector3(noseBridgeRight.x, noseBridgeRight.y, noseBridgeRight.z),
-                Vector3(noseBridgeCenter.x, noseBridgeCenter.y, noseBridgeCenter.z),
-                Vector3(faceMeasureLeft.x, faceMeasureLeft.y, faceMeasureLeft.z),
-                Vector3(faceMeasureRight.x, faceMeasureRight.y, faceMeasureRight.z),
+                Vector3(noseTip.x, noseTip.y, 0f),
+                Vector3(noseLeft.x, noseLeft.y, 0f),
+                Vector3(noseRight.x, noseRight.y, 0f),
+                Vector3(lipTop.x, lipTop.y, 0f),
+                Vector3(lipBottom.x, lipBottom.y, 0f),
+                Vector3(mouthLeft.x, mouthLeft.y, 0f),
+                Vector3(mouthRight.x, mouthRight.y, 0f),
+                Vector3(headTop.x, headTop.y, 0f),
+                Vector3(chin.x, chin.y, 0f),
+                Vector3(noseBridgeLeft.x, noseBridgeLeft.y, 0f),
+                Vector3(noseBridgeRight.x, noseBridgeRight.y, 0f),
+                Vector3(noseBridgeCenter.x, noseBridgeCenter.y, 0f),
+                Vector3(faceMeasureLeft.x, faceMeasureLeft.y, 0f),
+                Vector3(faceMeasureRight.x, faceMeasureRight.y, 0f),
             )
         }
     }

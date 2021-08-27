@@ -30,8 +30,6 @@ class MainActivity : AppCompatActivity() {
 
         stopOverlayButton.setOnClickListener { stopOverlay() }
 
-        toggleRenderer.setOnClickListener { toggleOverlayRenderer() }
-
         setViewStateToOverlaying()
 
         overlayWidth.setText("400")
@@ -136,12 +134,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setViewStateToNotOverlaying(){
-        toggleRenderer.setVisibility(View.VISIBLE)
         stopOverlayButton.setVisibility(View.VISIBLE)
         startOverlayButton.setVisibility(View.GONE)
     }
     private fun setViewStateToOverlaying(){
-        toggleRenderer.setVisibility(View.GONE)
         stopOverlayButton.setVisibility(View.GONE)
         startOverlayButton.setVisibility(View.VISIBLE)
     }
@@ -190,9 +186,5 @@ class MainActivity : AppCompatActivity() {
             stopService(foregroundServiceIntent)
         }
         setViewStateToOverlaying()
-    }
-
-    private fun toggleOverlayRenderer(){
-        overlayService.overlay.toggleShowLive2DModel()
     }
 }
