@@ -4,13 +4,16 @@ package com.muggy.vveeb2d
 import android.content.Context
 import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.util.Log
 import android.util.Size
 import android.view.*
+import android.webkit.WebMessage
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.core.math.MathUtils.clamp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -104,6 +107,7 @@ class OverlayController (  // declaring required variables
             Log.d("Error1", e.toString())
         }
         mediapipeManager.startTracking()
+        println("started face tracking")
     }
 
     fun close() {
@@ -125,66 +129,81 @@ class OverlayController (  // declaring required variables
     }
 
     private fun onFaceTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-//        mView.webview.post(Runnable {
-            println(pointsOfIntrest)
+        // a list of params live2D supported params
+        //   'ParamAngleX',
+        //   'ParamAngleY',
+        //   'ParamAngleZ',
+        //   'ParamEyeLOpen',
+        //   'ParamEyeLSmile',
+        //   'ParamEyeROpen',
+        //   'ParamEyeRSmile',
+        //   'ParamEyeBallX',
+        //   'ParamEyeBallY',
+        //   'ParamEyeBallForm',
+        //   'ParamBrowLY',
+        //   'ParamBrowRY',
+        //   'ParamBrowLX',
+        //   'ParamBrowRX',
+        //   'ParamBrowLAngle',
+        //   'ParamBrowRAngle',
+        //   'ParamBrowLForm',
+        //   'ParamBrowRForm',
+        //   'ParamMouthForm',
+        //   'ParamMouthOpenY',
+        //   'ParamCheek',
+        //   'ParamBodyAngleX',
+        //   'ParamBodyAngleY',
+        //   'ParamBodyAngleZ',
+        //   'ParamBreath',
+        //   'ParamArmLA',
+        //   'ParamArmRA',
+        //   'ParamArmLB',
+        //   'ParamArmRB',
+        //   'ParamHandL',
+        //   'ParamHandR',
+        //   'ParamHairFront',
+        //   'ParamHairSide',
+        //   'ParamHairBack',
+        //   'ParamHairFluffy',
+        //   'ParamShoulderY',
+        //   'ParamBustX',
+        //   'ParamBustY',
+        //   'ParamBaseX',
+        //   'ParamBaseY',
 
-            // a list of params live2D supported params
-            //   'ParamAngleX',
-            //   'ParamAngleY',
-            //   'ParamAngleZ',
-            //   'ParamEyeLOpen',
-            //   'ParamEyeLSmile',
-            //   'ParamEyeROpen',
-            //   'ParamEyeRSmile',
-            //   'ParamEyeBallX',
-            //   'ParamEyeBallY',
-            //   'ParamEyeBallForm',
-            //   'ParamBrowLY',
-            //   'ParamBrowRY',
-            //   'ParamBrowLX',
-            //   'ParamBrowRX',
-            //   'ParamBrowLAngle',
-            //   'ParamBrowRAngle',
-            //   'ParamBrowLForm',
-            //   'ParamBrowRForm',
-            //   'ParamMouthForm',
-            //   'ParamMouthOpenY',
-            //   'ParamCheek',
-            //   'ParamBodyAngleX',
-            //   'ParamBodyAngleY',
-            //   'ParamBodyAngleZ',
-            //   'ParamBreath',
-            //   'ParamArmLA',
-            //   'ParamArmRA',
-            //   'ParamArmLB',
-            //   'ParamArmRB',
-            //   'ParamHandL',
-            //   'ParamHandR',
-            //   'ParamHairFront',
-            //   'ParamHairSide',
-            //   'ParamHairBack',
-            //   'ParamHairFluffy',
-            //   'ParamShoulderY',
-            //   'ParamBustX',
-            //   'ParamBustY',
-            //   'ParamBaseX',
-            //   'ParamBaseY',
+        val faceCenterApprox = Vector3.pointAvarage(pointsOfIntrest.vectors.noseBridgeLeft, pointsOfIntrest.vectors.noseBridgeRight, pointsOfIntrest.vectors.mouthLeft, pointsOfIntrest.vectors.mouthRight)
 
+        // figure out facing left and right
+        val facingDirectionMagnitude = faceCenterApprox.x - pointsOfIntrest.vectors.noseTip.x
 
-//            val live2Dparams:String = ("{"
-//                    + "\"ParamMouthOpenY\":${ logisticBias(clamp(distanceDecimal, 0f, 1f)) },"
-//                    + "\"ParamAngleX\":${ clamp(-eulerAngles.yawDeg, -30.0, 30.0) },"
-//                    + "\"ParamAngleY\":${ clamp(-eulerAngles.pitchDeg, -30.0, 30.0) },"
-//                    + "\"ParamAngleZ\":${ clamp(eulerAngles.rollDeg, -30.0, 30.0) }"
-//                    + "}")
+        // figure out facing updown direction
+        val rearNoseBridgeCenter = pointsOfIntrest.vectors.faceMeasureLeft.middlePointFrom(pointsOfIntrest.vectors.faceMeasureRight)
+        val faceUpDownMagnitude = rearNoseBridgeCenter.y - pointsOfIntrest.vectors.noseBridgeCenter.y
 
+        // figure out head rotation
+        val verticalCenter = pointsOfIntrest.vectors.headTop.middlePointFrom(pointsOfIntrest.vectors.chin)
+        val deltaFaceY = pointsOfIntrest.vectors.chin.y - verticalCenter.y
+        val deltaFaceX = pointsOfIntrest.vectors.chin.x - verticalCenter.x
+        val faceAngle = Math.atan((deltaFaceX / deltaFaceY).toDouble())
 //
-//            mView.webview.postWebMessage(
-//                WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
-//                Uri.parse(rendererUrl)
-//            )
+//        println("facingDirectionMagnitude: ${facingDirectionMagnitude}")
+//        println("faceUpDownMagnitude: ${faceUpDownMagnitude}")
+//        println("faceAngle: ${faceAngle}")
 
-//        })
+        val live2Dparams:String = ("{"
+            + "\"ParamAngleX\":${ clamp(facingDirectionMagnitude * 500, -30.0f, 30.0f) },"
+            + "\"ParamAngleY\":${ clamp((faceUpDownMagnitude - 0.05) * 10 * 30, -30.0, 30.0) },"
+            + "\"ParamAngleZ\":${ clamp(Math.toDegrees(faceAngle), -30.0, 30.0) }"
+        + "}")
+        println (live2Dparams)
+
+        mView.webview.post(Runnable {
+            mView.webview.postWebMessage(
+                WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                Uri.parse(rendererUrl)
+            )
+        })
+
 
     }
 
@@ -314,6 +333,11 @@ open class MediapipeManager (
                         landmarks.getLandmark(POINT_MOUTH_RIGHT),
                         landmarks.getLandmark(POINT_HEAD_TOP),
                         landmarks.getLandmark(POINT_CHIN),
+                        landmarks.getLandmark(POINT_NOSE_BRIDGE_LEFT),
+                        landmarks.getLandmark(POINT_NOSE_BRIDGE_RIGHT),
+                        landmarks.getLandmark(POINT_NOSE_BRIDGE_CENTER),
+                        landmarks.getLandmark(POINT_FACE_MEASURE_LEFT),
+                        landmarks.getLandmark(POINT_FACE_MEASURE_RIGHT),
                     )
                 )
 //                if (isStoragePermissionGranted()){
@@ -348,7 +372,7 @@ open class MediapipeManager (
     }
 
     // points of intrest
-    data class PointsOfIntrest(
+    class PointsOfIntrest(
         val noseTip: LandmarkProto.NormalizedLandmark,
         val noseLeft: LandmarkProto.NormalizedLandmark,
         val noseRight: LandmarkProto.NormalizedLandmark,
@@ -358,7 +382,49 @@ open class MediapipeManager (
         val mouthRight: LandmarkProto.NormalizedLandmark,
         val headTop: LandmarkProto.NormalizedLandmark,
         val chin: LandmarkProto.NormalizedLandmark,
-    )
+        val noseBridgeLeft: LandmarkProto.NormalizedLandmark,
+        val noseBridgeRight: LandmarkProto.NormalizedLandmark,
+        val noseBridgeCenter: LandmarkProto.NormalizedLandmark,
+        val faceMeasureLeft: LandmarkProto.NormalizedLandmark,
+        val faceMeasureRight: LandmarkProto.NormalizedLandmark,
+    ){
+        data class PointsOfIntrestVectors (
+            val noseTip: Vector3,
+            val noseLeft: Vector3,
+            val noseRight: Vector3,
+            val lipTop: Vector3,
+            val lipBottom: Vector3,
+            val mouthLeft: Vector3,
+            val mouthRight: Vector3,
+            val headTop: Vector3,
+            val chin: Vector3,
+            val noseBridgeLeft: Vector3,
+            val noseBridgeRight: Vector3,
+            val noseBridgeCenter: Vector3,
+            val faceMeasureLeft: Vector3,
+            val faceMeasureRight: Vector3,
+        )
+
+        val vectors:PointsOfIntrestVectors
+        init{
+            vectors = PointsOfIntrestVectors(
+                Vector3(noseTip.x, noseTip.y, noseTip.z),
+                Vector3(noseLeft.x, noseLeft.y, noseLeft.z),
+                Vector3(noseRight.x, noseRight.y, noseRight.z),
+                Vector3(lipTop.x, lipTop.y, lipTop.z),
+                Vector3(lipBottom.x, lipBottom.y, lipBottom.z),
+                Vector3(mouthLeft.x, mouthLeft.y, mouthLeft.z),
+                Vector3(mouthRight.x, mouthRight.y, mouthRight.z),
+                Vector3(headTop.x, headTop.y, headTop.z),
+                Vector3(chin.x, chin.y, chin.z),
+                Vector3(noseBridgeLeft.x, noseBridgeLeft.y, noseBridgeLeft.z),
+                Vector3(noseBridgeRight.x, noseBridgeRight.y, noseBridgeRight.z),
+                Vector3(noseBridgeCenter.x, noseBridgeCenter.y, noseBridgeCenter.z),
+                Vector3(faceMeasureLeft.x, faceMeasureLeft.y, faceMeasureLeft.z),
+                Vector3(faceMeasureRight.x, faceMeasureRight.y, faceMeasureRight.z),
+            )
+        }
+    }
     protected val POINT_NOSE_TIP:Int = 1
     protected val POINT_NOSE_RIGHT:Int = 36
     protected val POINT_NOSE_LEFT:Int = 266
@@ -368,6 +434,11 @@ open class MediapipeManager (
     protected val POINT_MOUTH_RIGHT:Int = 62
     protected val POINT_HEAD_TOP:Int = 10
     protected val POINT_CHIN:Int = 175
+    protected val POINT_NOSE_BRIDGE_LEFT = 362
+    protected val POINT_NOSE_BRIDGE_RIGHT = 133
+    protected val POINT_NOSE_BRIDGE_CENTER = 168
+    protected val POINT_FACE_MEASURE_LEFT = 124
+    protected val POINT_FACE_MEASURE_RIGHT = 352
 
 
     fun resume() {

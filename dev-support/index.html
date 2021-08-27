@@ -12,6 +12,18 @@
 
                 document.body.appendChild(div)
             }))
+
+            function avgPoints(){
+                let coords = Array.from(arguments).reduce((sum, ele)=>{
+                    sum.x += parseFloat(ele.style.valueOf().getPropertyValue("--xpos"))
+                    sum.y += parseFloat(ele.style.valueOf().getPropertyValue("--ypos"))
+                    return sum
+                }, {x: 0, y:0, z:0})
+
+                coords.x = coords.x / arguments.length
+                coords.y = coords.y / arguments.length
+                return coords
+            }
         </script>
         
         <style>

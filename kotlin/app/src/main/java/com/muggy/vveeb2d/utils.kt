@@ -66,6 +66,23 @@ class Vector3 (
             (z + otherVector.z) / 2,
         )
     }
+
+    companion object {
+        fun pointAvarage(vararg points: Vector3):Vector3{
+            var sumX = 0f
+            var sumY = 0f
+            var sumZ = 0f
+            val pointsLength = points.size
+
+            for (point:Vector3 in points){
+                sumX += point.x
+                sumY += point.y
+                sumZ += point.z
+            }
+
+            return Vector3(sumX / pointsLength, sumY / pointsLength, sumZ / pointsLength)
+        }
+    }
 }
 
 fun toAngles (x:Double, y:Double, z:Double, w:Double):EulerAngles {
