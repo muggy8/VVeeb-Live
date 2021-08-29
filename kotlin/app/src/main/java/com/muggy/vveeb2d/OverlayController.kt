@@ -17,7 +17,6 @@ import androidx.core.math.MathUtils.clamp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import com.google.ar.core.*
 import com.google.mediapipe.components.*
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.mediapipe.glutil.EglManager
@@ -30,6 +29,9 @@ import com.google.mediapipe.components.ExternalTextureConverter
 import com.google.mediapipe.components.CameraXPreviewHelper
 import com.google.mediapipe.components.FrameProcessor
 import com.google.mediapipe.framework.AndroidAssetUtil
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 
 
 class OverlayController (  // declaring required variables
@@ -42,7 +44,7 @@ class OverlayController (  // declaring required variables
     private val rendererUrl: String = "https://muggy8.github.io/VVeeb2D/"
     var windowWidth: Int = 400
     var windowHeight: Int = 300
-    private var mediapipeManager:MediapipeManager
+    private var mediapipeManager: MediapipeManager
     private var lifecycleRegistry: LifecycleRegistry
 
     init {
@@ -79,6 +81,10 @@ class OverlayController (  // declaring required variables
         return lifecycleRegistry
     }
 
+    var latestLandmarks: String = ""
+        get() {
+            return mediapipeManager.latestLandmarks
+        }
 
     fun open() {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
@@ -200,7 +206,28 @@ class OverlayController (  // declaring required variables
                 mouthCenterOffset = -mouthCenterOffset
             }
 
+            // figure out the eye lid tracking
+            // do the left tracking first
+            var leftEyeCenter = Vector3.pointAvarage(
+                pointsOfIntrest.vectors.leftEyelidTop,
+                pointsOfIntrest.vectors.leftEyelidBottom,
+                pointsOfIntrest.vectors.leftEyelidInner,
+                pointsOfIntrest.vectors.leftEyelidOuter,
+            )
+            var deltaLeftEyelid = pointsOfIntrest.vectors.leftEyelidTop.distanceFrom(pointsOfIntrest.vectors.leftEyelidBottom)
+
+            // then do right eye tracking
+            var rightEyeCenter = Vector3.pointAvarage(
+                pointsOfIntrest.vectors.rightEyelidTop,
+                pointsOfIntrest.vectors.rightEyelidBottom,
+                pointsOfIntrest.vectors.rightEyelidInner,
+                pointsOfIntrest.vectors.rightEyelidOuter,
+            )
+            var deltaRightEyelid = pointsOfIntrest.vectors.rightEyelidTop.distanceFrom(pointsOfIntrest.vectors.rightEyelidBottom)
+
             val live2Dparams:String = ("{"
+                    + "\"ParamEyeROpen\":${ clamp((deltaRightEyelid * 10), 0.0f, 1.0f) },"
+                    + "\"ParamEyeLOpen\":${ clamp((deltaLeftEyelid * 10), 0.0f, 1.0f) },"
                     + "\"ParamMouthForm\":${ clamp((mouthCenterOffset * -70) + 0.3f, -1.0f, 1.0f) },"
                     + "\"ParamMouthOpenY\":${ clamp(logisticBias(mouthOpenness * 5), 0.0f, 1.0f) },"
                     + "\"ParamAngleX\":${ clamp(facingDirectionMagnitude * 500, -30.0f, 30.0f) },"
@@ -238,7 +265,7 @@ open class MediapipeManager (
     protected val context: Context,
     protected val lifecycleOwner: LifecycleOwner,
     protected val overlayView: View,
-    protected val trackingCallback: (data:PointsOfIntrest)->Unit ?,
+    protected val faceTrackingCallback: (data:PointsOfIntrest)->Unit ?,
 ){
     private val TAG = "OverlayController" // for logging
 
@@ -277,12 +304,11 @@ open class MediapipeManager (
     protected val INPUT_STREAM_NAME:String = "input_video"
     protected val OUTPUT_STREAM_NAME:String = "output_video"
     protected val FOCAL_LENGTH_STREAM_NAME:String = "focal_length_pixel"
-    protected val OUTPUT_LANDMARKS_STREAM_NAME:String = "face_landmarks"
+    protected val OUTPUT_FACE_LANDMARKS_STREAM_NAME:String = "face_landmarks_with_iris"
     protected val FLIP_FRAMES_VERTICALLY:Boolean = true
     protected val NUM_BUFFERS:Int = 2
 
     protected var root: String = Environment.getExternalStorageDirectory().toString()
-
 
     fun startTracking() {
         previewDisplayView = SurfaceView(context)
@@ -308,7 +334,7 @@ open class MediapipeManager (
         cameraHelper = CameraXPreviewHelper()
 
         processor.addPacketCallback(
-            OUTPUT_LANDMARKS_STREAM_NAME
+            OUTPUT_FACE_LANDMARKS_STREAM_NAME
         ) { packet: Packet ->
             val landmarksRaw = PacketGetter.getProtoBytes(packet)
             try {
@@ -319,7 +345,7 @@ open class MediapipeManager (
                     return@addPacketCallback
                 }
 
-                trackingCallback(
+                faceTrackingCallback(
                     PointsOfIntrest(
                         landmarks.getLandmark(POINT_NOSE_TIP),
                         landmarks.getLandmark(POINT_NOSE_RIGHT),
@@ -335,28 +361,37 @@ open class MediapipeManager (
                         landmarks.getLandmark(POINT_NOSE_BRIDGE_CENTER),
                         landmarks.getLandmark(POINT_FACE_MEASURE_LEFT),
                         landmarks.getLandmark(POINT_FACE_MEASURE_RIGHT),
+                        landmarks.getLandmark(POINT_IRIS_LEFT),
+                        landmarks.getLandmark(POINT_IRIS_RIGHT),
+
+                        landmarks.getLandmark(POINT_LEFT_EYE_LID_TOP),
+                        landmarks.getLandmark(POINT_LEFT_EYE_LID_BOTTOM),
+                        landmarks.getLandmark(POINT_LEFT_EYE_LID_INNER),
+                        landmarks.getLandmark(POINT_LEFT_EYE_LID_OUTER),
+                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_TOP),
+                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_BOTTOM),
+                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_INNER),
+                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_OUTER),
                     )
                 )
-//                if (isStoragePermissionGranted()){
-//                    var saveDir: File = File("$root/VVeeb2D")
-//                    if (!saveDir.exists()) {
-//                        saveDir.mkdirs();
-//                    }
-//                    val file: File = File(saveDir, "landmarks.txt")
-//                    if (file.exists()){
-//                        file.delete()
-//                    }
-//                    try{
-//
-//                        val outputStreamWriter: OutputStreamWriter = OutputStreamWriter(
-//                            FileOutputStream(file), "UTF-8")
-//                        outputStreamWriter.write(landmarks.toString())
-//                        outputStreamWriter.flush()
-//                        outputStreamWriter.close()
-//                    }
-//                    catch (e:Exception) {
-//                        e.printStackTrace();
-//                    }
+
+//                var saveDir = File("$root/VVeeb2D")
+//                if (!saveDir.exists()) {
+//                    saveDir.mkdirs();
+//                }
+//                val file = File(saveDir, "face-landmarks.txt")
+//                if (file.exists()){
+//                    file.delete()
+//                }
+//                try{
+//                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
+//                    outputStreamWriter.write(landmarks.toString())
+//                    outputStreamWriter.flush()
+//                    outputStreamWriter.close()
+//                    latestLandmarks = landmarks.toString()
+//                }
+//                catch (e:Exception) {
+//                    e.printStackTrace();
 //                }
 
             } catch (e: InvalidProtocolBufferException) {
@@ -366,7 +401,11 @@ open class MediapipeManager (
         }
 
         resume()
+
+
     }
+
+    lateinit var latestLandmarks: String;
 
     // points of intrest
     class PointsOfIntrest(
@@ -384,6 +423,16 @@ open class MediapipeManager (
         val noseBridgeCenter: LandmarkProto.NormalizedLandmark,
         val faceMeasureLeft: LandmarkProto.NormalizedLandmark,
         val faceMeasureRight: LandmarkProto.NormalizedLandmark,
+        val irisLeft: LandmarkProto.NormalizedLandmark,
+        val irisRight: LandmarkProto.NormalizedLandmark,
+        val leftEyelidTop: LandmarkProto.NormalizedLandmark,
+        val leftEyelidBottom: LandmarkProto.NormalizedLandmark,
+        val leftEyelidInner: LandmarkProto.NormalizedLandmark,
+        val leftEyelidOuter: LandmarkProto.NormalizedLandmark,
+        val rightEyelidTop: LandmarkProto.NormalizedLandmark,
+        val rightEyelidBottom: LandmarkProto.NormalizedLandmark,
+        val rightEyelidInner: LandmarkProto.NormalizedLandmark,
+        val rightEyelidOuter: LandmarkProto.NormalizedLandmark,
     ){
         data class PointsOfIntrestVectors (
             val noseTip: Vector3,
@@ -400,6 +449,16 @@ open class MediapipeManager (
             val noseBridgeCenter: Vector3,
             val faceMeasureLeft: Vector3,
             val faceMeasureRight: Vector3,
+            val irisLeft: Vector3,
+            val irisRight: Vector3,
+            val leftEyelidTop: Vector3,
+            val leftEyelidBottom: Vector3,
+            val leftEyelidInner: Vector3,
+            val leftEyelidOuter: Vector3,
+            val rightEyelidTop: Vector3,
+            val rightEyelidBottom: Vector3,
+            val rightEyelidInner: Vector3,
+            val rightEyelidOuter: Vector3,
         )
 
         val vectors:PointsOfIntrestVectors
@@ -419,6 +478,16 @@ open class MediapipeManager (
                 Vector3(noseBridgeCenter.x, noseBridgeCenter.y, 0f),
                 Vector3(faceMeasureLeft.x, faceMeasureLeft.y, 0f),
                 Vector3(faceMeasureRight.x, faceMeasureRight.y, 0f),
+                Vector3(irisLeft.x, irisLeft.y, 0f),
+                Vector3(irisRight.x, irisRight.y, 0f),
+                Vector3(leftEyelidTop.x, leftEyelidTop.y, 0f),
+                Vector3(leftEyelidBottom.x, leftEyelidBottom.y, 0f),
+                Vector3(leftEyelidInner.x, leftEyelidInner.y, 0f),
+                Vector3(leftEyelidOuter.x, leftEyelidOuter.y, 0f),
+                Vector3(rightEyelidTop.x, rightEyelidTop.y, 0f),
+                Vector3(rightEyelidBottom.x, rightEyelidBottom.y, 0f),
+                Vector3(rightEyelidInner.x, rightEyelidInner.y, 0f),
+                Vector3(rightEyelidOuter.x, rightEyelidOuter.y, 0f),
             )
         }
     }
@@ -436,6 +505,16 @@ open class MediapipeManager (
     protected val POINT_NOSE_BRIDGE_CENTER = 168
     protected val POINT_FACE_MEASURE_LEFT = 124
     protected val POINT_FACE_MEASURE_RIGHT = 352
+    protected val POINT_IRIS_LEFT = 473
+    protected val POINT_IRIS_RIGHT = 468
+    protected val POINT_LEFT_EYE_LID_TOP = 386
+    protected val POINT_LEFT_EYE_LID_BOTTOM = 374
+    protected val POINT_LEFT_EYE_LID_INNER = 362
+    protected val POINT_LEFT_EYE_LID_OUTER = 263
+    protected val POINT_RIGHT_EYE_LID_TOP = 159
+    protected val POINT_RIGHT_EYE_LID_BOTTOM = 145
+    protected val POINT_RIGHT_EYE_LID_INNER = 133
+    protected val POINT_RIGHT_EYE_LID_OUTER = 33
 
 
     fun resume() {

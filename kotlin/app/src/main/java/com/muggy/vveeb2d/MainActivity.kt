@@ -2,20 +2,17 @@ package com.muggy.vveeb2d
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.*
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.Settings
-import android.view.View
-import androidx.appcompat.app.AppCompatActivity
-import android.content.pm.PackageManager
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import kotlinx.android.synthetic.main.activity_main.*
 
@@ -182,9 +179,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopOverlay(){
         if (::foregroundServiceIntent.isInitialized){
+//            debugText.text = overlayService.overlay.latestLandmarks
+            setClipboard(this, overlayService.overlay.latestLandmarks)
             unbindService(connection)
             stopService(foregroundServiceIntent)
         }
         setViewStateToOverlaying()
+    }
+
+    private fun setClipboard(context: Context, text: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+            val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as android.text.ClipboardManager
+            clipboard.text = text
+        } else {
+            val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Copied Text", text)
+            clipboard.setPrimaryClip(clip)
+        }
     }
 }
