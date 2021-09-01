@@ -67,6 +67,30 @@ class Vector3 (
         )
     }
 
+    override fun toString(): String {
+        return "[x: ${x}, y: ${y}, z: ${z},]"
+    }
+
+    operator fun plus(other: Vector3): Vector3 {
+        return Vector3(
+            x + other.x,
+            y + other.y,
+            z + other.z,
+        )
+    }
+
+    operator fun minus(other: Vector3): Vector3 {
+        return Vector3(
+            x - other.x,
+            y - other.y,
+            z - other.z,
+        )
+    }
+
+    operator fun unaryMinus(): Vector3 {
+        return Vector3(-x, -y, -z,)
+    }
+
     companion object {
         fun pointAvarage(vararg points: Vector3):Vector3{
             var sumX = 0f

@@ -19,24 +19,18 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import com.google.mediapipe.components.*
 import com.google.mediapipe.formats.proto.LandmarkProto
+import com.google.mediapipe.framework.*
 import com.google.mediapipe.glutil.EglManager
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlinx.android.synthetic.main.overlay.view.*
 import java.util.*
 import com.google.mediapipe.framework.PacketGetter
-import com.google.mediapipe.framework.*
-import com.google.mediapipe.components.ExternalTextureConverter
-import com.google.mediapipe.components.CameraXPreviewHelper
-import com.google.mediapipe.components.FrameProcessor
-import com.google.mediapipe.framework.AndroidAssetUtil
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStreamWriter
+import java.lang.StringBuilder
+import com.google.mediapipe.formats.proto.MatrixDataProto.MatrixData;
+import com.google.mediapipe.modules.facegeometry.FaceGeometryProto.FaceGeometry;
 
 
-class OverlayController (  // declaring required variables
-    private val context: Context
-) : LifecycleOwner {
+class OverlayController ( private val context: Context ) : LifecycleOwner {
     private val mView: View
     private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
@@ -177,70 +171,21 @@ class OverlayController (  // declaring required variables
 
 
         mView.webview.post(Runnable {
-            val faceCenterApprox = Vector3.pointAvarage(pointsOfIntrest.vectors.noseBridgeLeft, pointsOfIntrest.vectors.noseBridgeRight, pointsOfIntrest.vectors.mouthLeft, pointsOfIntrest.vectors.mouthRight)
 
-            // figure out facing left and right
-            val facingDirectionMagnitude = pointsOfIntrest.vectors.noseTip.x - faceCenterApprox.x
+//            val live2Dparams:String = ("{"
+//                    + "\"ParamEyeROpen\":${ clamp((deltaRightEyelid * 10), 0.0f, 1.0f) },"
+//                    + "\"ParamEyeLOpen\":${ clamp((deltaLeftEyelid * 10), 0.0f, 1.0f) },"
+//                    + "\"ParamMouthForm\":${ clamp((mouthCenterOffset * -70) + 0.3f, -1.0f, 1.0f) },"
+//                    + "\"ParamMouthOpenY\":${ clamp(logisticBias(mouthOpenness * 5), 0.0f, 1.0f) },"
+//                    + "\"ParamAngleX\":${ clamp(facingDirectionMagnitude * 500, -30.0f, 30.0f) },"
+//                    + "\"ParamAngleY\":${ clamp((faceUpDownMagnitude - 0.05) * 10 * 30, -30.0, 30.0) },"
+//                    + "\"ParamAngleZ\":${ clamp(-Math.toDegrees(faceAngle), -30.0, 30.0) }"
+//                    + "}")
 
-            // figure out facing updown direction
-            val rearNoseBridgeCenter = pointsOfIntrest.vectors.faceMeasureLeft.middlePointFrom(pointsOfIntrest.vectors.faceMeasureRight)
-            var faceUpDownMagnitude = rearNoseBridgeCenter.distanceFrom(pointsOfIntrest.vectors.noseBridgeCenter)
-            if (pointsOfIntrest.vectors.noseBridgeCenter.y > rearNoseBridgeCenter.y){
-                faceUpDownMagnitude = -faceUpDownMagnitude
-            }
 
-            // figure out head rotation
-            val verticalCenter = pointsOfIntrest.vectors.headTop.middlePointFrom(pointsOfIntrest.vectors.chin)
-            val deltaFaceY = pointsOfIntrest.vectors.chin.y - verticalCenter.y
-            val deltaFaceX = pointsOfIntrest.vectors.chin.x - verticalCenter.x
-            val faceAngle = Math.atan((deltaFaceX / deltaFaceY).toDouble())
+//            WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+//            Uri.parse(rendererUrl)
 
-            // figure out mouth open
-            val mouthOpenness = pointsOfIntrest.vectors.lipTop.distanceFrom(pointsOfIntrest.vectors.lipBottom)
-
-            // figure out mouth happiness
-            val mouthCenter = Vector3.pointAvarage(pointsOfIntrest.vectors.mouthLeft, pointsOfIntrest.vectors.mouthRight, pointsOfIntrest.vectors.lipTop, pointsOfIntrest.vectors.lipBottom)
-            val mouthCenterHoriz = pointsOfIntrest.vectors.mouthLeft.middlePointFrom(pointsOfIntrest.vectors.mouthRight)
-            var mouthCenterOffset = mouthCenterHoriz.distanceFrom(mouthCenter)
-            if (mouthCenter.y > mouthCenterHoriz.y){
-                mouthCenterOffset = -mouthCenterOffset
-            }
-
-            // figure out the eye lid tracking
-            // do the left tracking first
-            var leftEyeCenter = Vector3.pointAvarage(
-                pointsOfIntrest.vectors.leftEyelidTop,
-                pointsOfIntrest.vectors.leftEyelidBottom,
-                pointsOfIntrest.vectors.leftEyelidInner,
-                pointsOfIntrest.vectors.leftEyelidOuter,
-            )
-            var deltaLeftEyelid = pointsOfIntrest.vectors.leftEyelidTop.distanceFrom(pointsOfIntrest.vectors.leftEyelidBottom)
-
-            // then do right eye tracking
-            var rightEyeCenter = Vector3.pointAvarage(
-                pointsOfIntrest.vectors.rightEyelidTop,
-                pointsOfIntrest.vectors.rightEyelidBottom,
-                pointsOfIntrest.vectors.rightEyelidInner,
-                pointsOfIntrest.vectors.rightEyelidOuter,
-            )
-            var deltaRightEyelid = pointsOfIntrest.vectors.rightEyelidTop.distanceFrom(pointsOfIntrest.vectors.rightEyelidBottom)
-
-            val live2Dparams:String = ("{"
-                    + "\"ParamEyeROpen\":${ clamp((deltaRightEyelid * 10), 0.0f, 1.0f) },"
-                    + "\"ParamEyeLOpen\":${ clamp((deltaLeftEyelid * 10), 0.0f, 1.0f) },"
-                    + "\"ParamMouthForm\":${ clamp((mouthCenterOffset * -70) + 0.3f, -1.0f, 1.0f) },"
-                    + "\"ParamMouthOpenY\":${ clamp(logisticBias(mouthOpenness * 5), 0.0f, 1.0f) },"
-                    + "\"ParamAngleX\":${ clamp(facingDirectionMagnitude * 500, -30.0f, 30.0f) },"
-                    + "\"ParamAngleY\":${ clamp((faceUpDownMagnitude - 0.05) * 10 * 30, -30.0, 30.0) },"
-                    + "\"ParamAngleZ\":${ clamp(-Math.toDegrees(faceAngle), -30.0, 30.0) }"
-                    + "}")
-
-            println(live2Dparams)
-
-            mView.webview.postWebMessage(
-                WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
-                Uri.parse(rendererUrl)
-            )
         })
 
 
@@ -308,6 +253,9 @@ open class MediapipeManager (
     protected val FLIP_FRAMES_VERTICALLY:Boolean = true
     protected val NUM_BUFFERS:Int = 2
 
+    protected val OUTPUT_FACE_GEOMETRY_STREAM_NAME = "multi_face_geometry"
+    protected val MATRIX_TRANSLATION_Z_INDEX = 14
+
     protected var root: String = Environment.getExternalStorageDirectory().toString()
 
     fun startTracking() {
@@ -333,71 +281,104 @@ open class MediapipeManager (
 
         cameraHelper = CameraXPreviewHelper()
 
+//        processor.addPacketCallback(
+//            OUTPUT_FACE_LANDMARKS_STREAM_NAME
+//        ) { packet: Packet ->
+//            val landmarksRaw = PacketGetter.getProtoBytes(packet)
+//            try {
+//                val landmarks =
+//                    LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw)
+//                if (landmarks == null) {
+//                    Log.v(TAG, "[TS:" + packet.timestamp + "] No landmarks.")
+//                    return@addPacketCallback
+//                }
+//
+//                faceTrackingCallback(
+//                    PointsOfIntrest(
+//                        landmarks.getLandmark(POINT_NOSE_TIP),
+//                        landmarks.getLandmark(POINT_NOSE_RIGHT),
+//                        landmarks.getLandmark(POINT_NOSE_LEFT),
+//                        landmarks.getLandmark(POINT_LIP_TOP),
+//                        landmarks.getLandmark(POINT_LIP_BOTTOM),
+//                        landmarks.getLandmark(POINT_MOUTH_LEFT),
+//                        landmarks.getLandmark(POINT_MOUTH_RIGHT),
+//                        landmarks.getLandmark(POINT_HEAD_TOP),
+//                        landmarks.getLandmark(POINT_CHIN),
+//                        landmarks.getLandmark(POINT_NOSE_BRIDGE_LEFT),
+//                        landmarks.getLandmark(POINT_NOSE_BRIDGE_RIGHT),
+//                        landmarks.getLandmark(POINT_NOSE_BRIDGE_CENTER),
+//                        landmarks.getLandmark(POINT_FACE_MEASURE_LEFT),
+//                        landmarks.getLandmark(POINT_FACE_MEASURE_RIGHT),
+//                        landmarks.getLandmark(POINT_IRIS_LEFT),
+//                        landmarks.getLandmark(POINT_IRIS_RIGHT),
+//
+//                        landmarks.getLandmark(POINT_LEFT_EYE_LID_TOP),
+//                        landmarks.getLandmark(POINT_LEFT_EYE_LID_BOTTOM),
+//                        landmarks.getLandmark(POINT_LEFT_EYE_LID_INNER),
+//                        landmarks.getLandmark(POINT_LEFT_EYE_LID_OUTER),
+//                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_TOP),
+//                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_BOTTOM),
+//                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_INNER),
+//                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_OUTER),
+//                    )
+//                )
+//
+////                var saveDir = File("$root/VVeeb2D")
+////                if (!saveDir.exists()) {
+////                    saveDir.mkdirs();
+////                }
+////                val file = File(saveDir, "face-landmarks.txt")
+////                if (file.exists()){
+////                    file.delete()
+////                }
+////                try{
+////                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
+////                    outputStreamWriter.write(landmarks.toString())
+////                    outputStreamWriter.flush()
+////                    outputStreamWriter.close()
+////                    latestLandmarks = landmarks.toString()
+////                }
+////                catch (e:Exception) {
+////                    e.printStackTrace();
+////                }
+//
+//            } catch (e: InvalidProtocolBufferException) {
+//                Log.e(TAG, "Couldn't Exception received - $e")
+//                return@addPacketCallback
+//            }
+//        }
+
         processor.addPacketCallback(
-            OUTPUT_FACE_LANDMARKS_STREAM_NAME
+            OUTPUT_FACE_GEOMETRY_STREAM_NAME
         ) { packet: Packet ->
-            val landmarksRaw = PacketGetter.getProtoBytes(packet)
-            try {
-                val landmarks =
-                    LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw)
-                if (landmarks == null) {
-                    Log.v(TAG, "[TS:" + packet.timestamp + "] No landmarks.")
-                    return@addPacketCallback
+
+            Log.d(TAG, "Received a multi face geometry packet.")
+            val multiFaceGeometry: List<FaceGeometry> = PacketGetter.getProtoVector(packet, FaceGeometry.parser())
+            val approxDistanceAwayFromCameraLogMessage = StringBuilder()
+            for (faceGeometry in multiFaceGeometry) {
+                if (approxDistanceAwayFromCameraLogMessage.length > 0) {
+                    approxDistanceAwayFromCameraLogMessage.append(' ')
                 }
-
-                faceTrackingCallback(
-                    PointsOfIntrest(
-                        landmarks.getLandmark(POINT_NOSE_TIP),
-                        landmarks.getLandmark(POINT_NOSE_RIGHT),
-                        landmarks.getLandmark(POINT_NOSE_LEFT),
-                        landmarks.getLandmark(POINT_LIP_TOP),
-                        landmarks.getLandmark(POINT_LIP_BOTTOM),
-                        landmarks.getLandmark(POINT_MOUTH_LEFT),
-                        landmarks.getLandmark(POINT_MOUTH_RIGHT),
-                        landmarks.getLandmark(POINT_HEAD_TOP),
-                        landmarks.getLandmark(POINT_CHIN),
-                        landmarks.getLandmark(POINT_NOSE_BRIDGE_LEFT),
-                        landmarks.getLandmark(POINT_NOSE_BRIDGE_RIGHT),
-                        landmarks.getLandmark(POINT_NOSE_BRIDGE_CENTER),
-                        landmarks.getLandmark(POINT_FACE_MEASURE_LEFT),
-                        landmarks.getLandmark(POINT_FACE_MEASURE_RIGHT),
-                        landmarks.getLandmark(POINT_IRIS_LEFT),
-                        landmarks.getLandmark(POINT_IRIS_RIGHT),
-
-                        landmarks.getLandmark(POINT_LEFT_EYE_LID_TOP),
-                        landmarks.getLandmark(POINT_LEFT_EYE_LID_BOTTOM),
-                        landmarks.getLandmark(POINT_LEFT_EYE_LID_INNER),
-                        landmarks.getLandmark(POINT_LEFT_EYE_LID_OUTER),
-                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_TOP),
-                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_BOTTOM),
-                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_INNER),
-                        landmarks.getLandmark(POINT_RIGHT_EYE_LID_OUTER),
-                    )
+                val poseTransformMatrix: MatrixData = faceGeometry.getPoseTransformMatrix()
+                approxDistanceAwayFromCameraLogMessage.append(
+                    -poseTransformMatrix.getPackedData(MATRIX_TRANSLATION_Z_INDEX)
                 )
 
-//                var saveDir = File("$root/VVeeb2D")
-//                if (!saveDir.exists()) {
-//                    saveDir.mkdirs();
-//                }
-//                val file = File(saveDir, "face-landmarks.txt")
-//                if (file.exists()){
-//                    file.delete()
-//                }
-//                try{
-//                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
-//                    outputStreamWriter.write(landmarks.toString())
-//                    outputStreamWriter.flush()
-//                    outputStreamWriter.close()
-//                    latestLandmarks = landmarks.toString()
-//                }
-//                catch (e:Exception) {
-//                    e.printStackTrace();
-//                }
+                val sortaFaceMiddle = (getPoint(faceGeometry.mesh.vertexBufferList, POINT_FACE_CENTER_FINDER_LEFT).middlePointFrom(getPoint(faceGeometry.mesh.vertexBufferList, POINT_FACE_CENTER_FINDER_RIGHT)))
 
-            } catch (e: InvalidProtocolBufferException) {
-                Log.e(TAG, "Couldn't Exception received - $e")
-                return@addPacketCallback
+                println(getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_TIP) - sortaFaceMiddle)
+
             }
+            Log.d(
+                TAG,
+                "[TS:"
+                        + packet.timestamp
+                        + "] size = "
+                        + multiFaceGeometry.size
+                        + "; approx. distance away from camera in cm for faces = ["
+                        + approxDistanceAwayFromCameraLogMessage
+                        + "]"
+            )
         }
 
         resume()
@@ -406,6 +387,13 @@ open class MediapipeManager (
     }
 
     lateinit var latestLandmarks: String;
+
+    protected fun getPoint(pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
+        val x = pointsBuffer[pointIndex * 5]
+        val y = pointsBuffer[(pointIndex * 5) + 1]
+        val z = pointsBuffer[(pointIndex * 5) + 2]
+        return Vector3(x, y, z)
+    }
 
     // points of intrest
     class PointsOfIntrest(
@@ -515,6 +503,8 @@ open class MediapipeManager (
     protected val POINT_RIGHT_EYE_LID_BOTTOM = 145
     protected val POINT_RIGHT_EYE_LID_INNER = 133
     protected val POINT_RIGHT_EYE_LID_OUTER = 33
+    protected val POINT_FACE_CENTER_FINDER_LEFT = 454
+    protected val POINT_FACE_CENTER_FINDER_RIGHT = 234
 
 
     fun resume() {
