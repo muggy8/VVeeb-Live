@@ -51,6 +51,7 @@ class Vector3 (
     val y: Float,
     val z: Float,
 ) {
+
     fun distanceFrom(otherVector: Vector3): Float{
         return sqrt(
             (otherVector.x - x).pow(2)
@@ -152,4 +153,7 @@ fun mapNumber(
 
 fun logisticBias (input:Float, a: Float = 40f, c: Float = 1f, k:Float = 14f): Float {
     return c / (1f + (a * Math.E.toFloat().pow(-k).pow(input)))
+}
+fun logisticBias (input:Double, a: Double = 40.0, c: Double = 1.0, k:Double = 14.0): Double {
+    return c / (1 + (a * Math.E.toFloat().pow(-k.toFloat()).pow(input.toFloat())))
 }
