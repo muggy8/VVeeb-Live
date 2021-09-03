@@ -2,16 +2,16 @@
     <head>
         <script>
 
-        fetch("landmarks-front.json")
-            .then(owo=>owo.json())
-            .then(landmarks=>landmarks.forEach((landmark, index)=>{
-                let div = document.createElement("div")
-                div.classList.add("point")
-                div.id = index
-                div.setAttribute("style", `--xpos: ${landmark.x}; --ypos: ${landmark.y}`)
+            fetch("landmarks-face.json")
+                .then(owo=>owo.json())
+                .then(landmarks=>landmarks.forEach((landmark, index)=>{
+                    let div = document.createElement("div")
+                    div.classList.add("point")
+                    div.id = index
+                    div.setAttribute("style", `--xpos: ${landmark.x}; --ypos: ${landmark.y}; --zpos:${landmark.z}`)
 
-                document.body.appendChild(div)
-            }))
+                    document.getElementById("scene").appendChild(div)
+                }))
 
             function avgPoints(){
                 let coords = Array.from(arguments).reduce((sum, ele)=>{
@@ -24,22 +24,66 @@
                 coords.y = coords.y / arguments.length
                 return coords
             }
+
+            let sceneData = {
+              x: 0,
+              y: 0,
+              z: 0,
+              deg: 0,
+              updateView: function(){
+                document.getElementById("scene").setAttribute(
+                  "style",
+                  `--x: ${this.x}; --y: ${this.y} ; --z: ${this.z} ; --deg: ${this.deg}deg ;`
+                )
+              },
+            }
         </script>
-        
+
         <style>
+            html, body {padding: 0; margin: 0}
+            #scene{
+                transform: rotate3d(var(--x, 0), var(--y, 0), var(--z, 0), var(--deg, 0deg));
+                width: 100vw;
+                height: 100vh;
+                position: relative;
+            }
             .point {
                 padding: 1px;
                 border-radius: 1px;
-                transform: translate(calc(var(--xpos, 0) * 100vw), calc(var(--ypos, 0) * 100vh));
+                transform: translate3d(
+                  calc(var(--xpos, 0) * 500px),
+                  calc(var(--ypos, 0) * 500px),
+                  calc(var(--zpos, 0) * 500px)
+                );
                 background-color: black;
                 display: inline-block;
                 position: absolute;
                 top: 0;
                 left: 0;
             }
+            #controls {
+              position: absolute;
+              top: 0;
+              left: 0;
+              padding: 1em;
+            }
         </style>
     </head>
     <body>
-        
+        <div id="scene"></div>
+        <div id="controls">
+          <div>
+            X: <input type="range" name="x" min="0" max="1" step="0.01" oninput ="sceneData.x = parseFloat(this.value); sceneData.updateView()" value="0"/>
+          </div>
+          <div>
+            Y: <input type="range" name="y" min="0" max="1" step="0.01" oninput ="sceneData.y = parseFloat(this.value); sceneData.updateView()" value="0"/>
+          </div>
+          <div>
+            Z: <input type="range" name="z" min="0" max="1" step="0.01" oninput ="sceneData.z = parseFloat(this.value); sceneData.updateView()" value="0"/>
+          </div>
+          <div>
+            deg: <input type="range" name="z" min="0" max="360" step="1" oninput ="sceneData.deg = parseFloat(this.value); sceneData.updateView()" value="0"/>
+          </div>
+        </div>
     </body>
 </html>
