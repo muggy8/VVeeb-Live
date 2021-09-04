@@ -441,9 +441,9 @@ open class MediapipeManager (
         var z = pointsBuffer[(pointIndex * 5) + 2]
 
         // i have no idea what this sorcery does or how it works but my friend Jack did the galaxy brain math and came up with this and it works so err ya....
-        x = ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat()
-        y = ((rotationMatrix.get(4) * x) + (rotationMatrix.get(5) * y) + (rotationMatrix.get(6) * z)).toFloat()
-        z = ((rotationMatrix.get(8) * x) + (rotationMatrix.get(9) * y) + (rotationMatrix.get(10) * z)).toFloat()
+        x = ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * x) + (rotationMatrix.get(2) * x)).toFloat()
+        y = ((rotationMatrix.get(3) * y) + (rotationMatrix.get(4) * y) + (rotationMatrix.get(5) * y)).toFloat()
+        z = ((rotationMatrix.get(6) * z) + (rotationMatrix.get(7) * z) + (rotationMatrix.get(8) * z)).toFloat()
 
         return Vector3(x, y, z)
     }
@@ -452,13 +452,13 @@ open class MediapipeManager (
     protected fun getRotationMatrix(poseTransformMatrix: MatrixData):List<Double>{
 
         val a = poseTransformMatrix.getPackedData(0)
-        val b = poseTransformMatrix.getPackedData(1)
-        val c = poseTransformMatrix.getPackedData(2)
-        val e = poseTransformMatrix.getPackedData(4)
+        val b = poseTransformMatrix.getPackedData(4)
+        val c = poseTransformMatrix.getPackedData(8)
+        val e = poseTransformMatrix.getPackedData(1)
         val f = poseTransformMatrix.getPackedData(5)
-        val g = poseTransformMatrix.getPackedData(6)
-        val i = poseTransformMatrix.getPackedData(8)
-        val j = poseTransformMatrix.getPackedData(9)
+        val g = poseTransformMatrix.getPackedData(9)
+        val i = poseTransformMatrix.getPackedData(2)
+        val j = poseTransformMatrix.getPackedData(6)
         val k = poseTransformMatrix.getPackedData(10)
 
         val scaleX = Math.sqrt(Math.pow(a.toDouble(), 2.0) + Math.pow(e.toDouble(), 2.0) + Math.pow(i.toDouble(), 2.0))
@@ -466,10 +466,9 @@ open class MediapipeManager (
         val scaleZ = Math.sqrt(Math.pow(c.toDouble(), 2.0) + Math.pow(g.toDouble(), 2.0) + Math.pow(k.toDouble(), 2.0))
 
         val rotationMatrix: List<Double> = listOf(
-            a/scaleX, b/scaleY, c/scaleZ, 0.0,
-            e/scaleX, f/scaleY, g/scaleZ, 0.0,
-            i/scaleX, j/scaleY, k/scaleZ, 0.0,
-            0.0, 0.0, 0.0, 1.0,
+            a/scaleX, b/scaleY, c/scaleZ,
+            e/scaleX, f/scaleY, g/scaleZ,
+            i/scaleX, j/scaleY, k/scaleZ,
         )
 
         println(rotationMatrix)
