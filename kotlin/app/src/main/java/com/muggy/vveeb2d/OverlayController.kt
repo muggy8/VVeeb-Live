@@ -171,10 +171,13 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
 
         mView.webview.post(Runnable {
-            val angleX = Math.atan((pointsOfIntrest.noseTip.x/pointsOfIntrest.noseTip.z).toDouble())
-            val angleY = Math.atan((pointsOfIntrest.noseTip.y/pointsOfIntrest.noseTip.z).toDouble())
-            val angleZ = Math.atan((pointsOfIntrest.chin.x/pointsOfIntrest.chin.y).toDouble())
+            val angleX = Math.atan((pointsOfIntrest.noseTipTransformed.x/pointsOfIntrest.noseTipTransformed.z).toDouble())
+            val angleY = Math.atan((pointsOfIntrest.noseTipTransformed.y/pointsOfIntrest.noseTipTransformed.z).toDouble())
+            val angleZ = Math.atan((pointsOfIntrest.chinTransformed.x/pointsOfIntrest.chinTransformed.y).toDouble())
             val mouthDistanceY = pointsOfIntrest.lipTop.distanceFrom(pointsOfIntrest.lipBottom)
+
+            val mouthCenterY = pointsOfIntrest.lipTop.middlePointFrom(pointsOfIntrest.lipBottom)
+            val mouthCenterX = pointsOfIntrest.mouthLeft.middlePointFrom(pointsOfIntrest.mouthRight)
 
             val rightEyeDelta = pointsOfIntrest.rightEyelidTop.distanceFrom(pointsOfIntrest.rightEyelidBottom)
             val leftEyeDelta = pointsOfIntrest.leftEyelidTop.distanceFrom(pointsOfIntrest.leftEyelidBottom)
@@ -182,9 +185,9 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             println("leftEye: ${leftEyeDelta} | rightEye: ${rightEyeDelta}")
 
             val live2Dparams:String = ("{"
-                + "\"ParamEyeROpen\":${ -1 + clamp(logisticBias((rightEyeDelta - 0.55) * 2), 0.0, 1.0) },"
-                + "\"ParamEyeLOpen\":${ -1 + clamp(logisticBias((leftEyeDelta - 0.55) * 2), 0.0, 1.0) },"
-//                + "\"ParamMouthForm\":${ clamp((mouthCenterOffset * -70) + 0.3f, -1.0f, 1.0f) },"
+//                + "\"ParamEyeROpen\":${ -1 + clamp(logisticBias((rightEyeDelta - 0.55) * 2), 0.0, 1.0) },"
+//                + "\"ParamEyeLOpen\":${ -1 + clamp(logisticBias((leftEyeDelta - 0.55) * 2), 0.0, 1.0) },"
+                + "\"ParamMouthForm\":${ clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f) },"
                 + "\"ParamMouthOpenY\":${ clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f) },"
                 + "\"ParamAngleX\":${ clamp(Math.toDegrees(angleX), -30.0, 30.0) },"
                 + "\"ParamAngleY\":${ clamp(Math.toDegrees(angleY), -30.0, 30.0) },"
@@ -192,7 +195,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                 + "}"
             )
 
-            println(live2Dparams)
+//            println(live2Dparams)
 
             mView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
@@ -349,7 +352,7 @@ open class MediapipeManager (
 //                    -poseTransformMatrix.getPackedData(MATRIX_TRANSLATION_Z_INDEX)
 //                )
 //
-//                println(getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_TIP))
+//                println(getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_TIP))
 //
 //            }
 
@@ -359,7 +362,7 @@ open class MediapipeManager (
 
             var json = "["
             for (i in 0..467) {
-                val point = getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, i)
+                val point = getPoint(faceGeometry.mesh.vertexBufferList, i)
                 var jsonBit = ""
                 if (i > 0){
                     jsonBit += ","
@@ -373,7 +376,7 @@ open class MediapipeManager (
             if (!saveDir.exists()) {
                 saveDir.mkdirs();
             }
-            val file = File(saveDir, "landmarks-face-3d-6.json")
+            val file = File(saveDir, "landmarks-face-3d-9.json")
             if (file.exists()){
                 file.delete()
             }
@@ -387,34 +390,35 @@ open class MediapipeManager (
                 e.printStackTrace();
             }
 
-//            faceTrackingCallback(
-//                PointsOfIntrest(
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_TIP),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_RIGHT),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_LEFT),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LIP_TOP),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LIP_BOTTOM),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_MOUTH_LEFT),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_MOUTH_RIGHT),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_HEAD_TOP),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_CHIN),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_LEFT),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_RIGHT),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_CENTER),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_LEFT),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_RIGHT),
-//
-//
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_TOP),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_BOTTOM),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_INNER),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_OUTER),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_TOP),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_BOTTOM),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_INNER),
-//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_OUTER),
-//                )
-//            )
+            faceTrackingCallback(
+                PointsOfIntrest(
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_TIP),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_RIGHT),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_LEFT),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LIP_TOP),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LIP_BOTTOM),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_MOUTH_LEFT),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_MOUTH_RIGHT),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_HEAD_TOP),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_CHIN),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_LEFT),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_RIGHT),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_CENTER),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_LEFT),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_RIGHT),
+
+
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_TOP),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_BOTTOM),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_INNER),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_OUTER),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_TOP),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_BOTTOM),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_INNER),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_OUTER),
+                    rotationMatrix,
+                )
+            )
 
 //            Log.d(
 //                TAG,
@@ -435,17 +439,23 @@ open class MediapipeManager (
 
     lateinit var latestLandmarks: String;
 
-    protected fun getPoint(rotationMatrix: List<Double>, pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
+    protected fun getPoint(pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
         var x = pointsBuffer[pointIndex * 5]
         var y = pointsBuffer[(pointIndex * 5) + 1]
         var z = pointsBuffer[(pointIndex * 5) + 2]
 
-        // i have no idea what this sorcery does or how it works but my friend Jack did the galaxy brain math and came up with this and it works so err ya....
-        x = ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * x) + (rotationMatrix.get(2) * x)).toFloat()
-        y = ((rotationMatrix.get(3) * y) + (rotationMatrix.get(4) * y) + (rotationMatrix.get(5) * y)).toFloat()
-        z = ((rotationMatrix.get(6) * z) + (rotationMatrix.get(7) * z) + (rotationMatrix.get(8) * z)).toFloat()
-
         return Vector3(x, y, z)
+    }
+
+    protected fun transformPoint(rotationMatrix: List<Double>, point:Vector3):Vector3{
+        var x = point.x
+        var y = point.y
+        var z = point.z
+        return Vector3(
+            ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat(),
+            ((rotationMatrix.get(3) * x) + (rotationMatrix.get(4) * y) + (rotationMatrix.get(5) * z)).toFloat(),
+            ((rotationMatrix.get(6) * x) + (rotationMatrix.get(7) * y) + (rotationMatrix.get(8) * z)).toFloat(),
+        )
     }
 
     // math from: https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
@@ -471,13 +481,11 @@ open class MediapipeManager (
             i/scaleX, j/scaleY, k/scaleZ,
         )
 
-        println(rotationMatrix)
-
         return rotationMatrix
     }
 
     // points of intrest
-    data class PointsOfIntrest(
+    class PointsOfIntrest(
         val noseTip: Vector3,
         val noseLeft: Vector3,
         val noseRight: Vector3,
@@ -500,7 +508,88 @@ open class MediapipeManager (
         val rightEyelidBottom: Vector3,
         val rightEyelidInner: Vector3,
         val rightEyelidOuter: Vector3,
-    )
+        protected val rotationMatrix: List<Double>
+    ){
+        val noseTipTransformed: Vector3
+            get() = transformPoint(noseTip)
+        val noseLeftTransformed: Vector3
+            get() = transformPoint(noseLeft)
+        val noseRightTransformed: Vector3
+            get() = transformPoint(noseRight)
+        val lipTopTransformed: Vector3
+            get() = transformPoint(lipTop)
+        val lipBottomTransformed: Vector3
+            get() = transformPoint(lipBottom)
+        val mouthLeftTransformed: Vector3
+            get() = transformPoint(mouthLeft)
+        val mouthRightTransformed: Vector3
+            get() = transformPoint(mouthRight)
+        val headTopTransformed: Vector3
+            get() = transformPoint(headTop)
+        val chinTransformed: Vector3
+            get() = transformPoint(chin)
+        val noseBridgeLeftTransformed: Vector3
+            get() = transformPoint(noseBridgeLeft)
+        val noseBridgeRightTransformed: Vector3
+            get() = transformPoint(noseBridgeRight)
+        val noseBridgeCenterTransformed: Vector3
+            get() = transformPoint(noseBridgeCenter)
+        val faceMeasureLeftTransformed: Vector3
+            get() = transformPoint(faceMeasureLeft)
+        val faceMeasureRightTransformed: Vector3
+            get() = transformPoint(faceMeasureRight)
+        val leftEyelidTopTransformed: Vector3
+            get() = transformPoint(leftEyelidTop)
+        val leftEyelidBottomTransformed: Vector3
+            get() = transformPoint(leftEyelidBottom)
+        val leftEyelidInnerTransformed: Vector3
+            get() = transformPoint(leftEyelidInner)
+        val leftEyelidOuterTransformed: Vector3
+            get() = transformPoint(leftEyelidOuter)
+        val rightEyelidTopTransformed: Vector3
+            get() = transformPoint(rightEyelidTop)
+        val rightEyelidBottomTransformed: Vector3
+            get() = transformPoint(rightEyelidBottom)
+        val rightEyelidInnerTransformed: Vector3
+            get() = transformPoint(rightEyelidInner)
+        val rightEyelidOuterTransformed: Vector3
+            get() = transformPoint(rightEyelidOuter)
+//        init {
+//            noseTipTransformed
+//            noseLeftTransformed
+//            noseRightTransformed
+//            lipTopTransformed
+//            lipBottomTransformed
+//            mouthLeftTransformed
+//            mouthRightTransformed
+//            headTopTransformed
+//            chinTransformed
+//            noseBridgeLeftTransformed
+//            noseBridgeRightTransformed
+//            noseBridgeCenterTransformed
+//            faceMeasureLeftTransformed
+//            faceMeasureRightTransformed
+//            leftEyelidTopTransformed
+//            leftEyelidBottomTransformed
+//            leftEyelidInnerTransformed
+//            leftEyelidOuterTransformed
+//            rightEyelidTopTransformed
+//            rightEyelidBottomTransformed
+//            rightEyelidInnerTransformed
+//            rightEyelidOuterTransformed
+//        }
+
+        protected fun transformPoint(point:Vector3):Vector3{
+            var x = point.x
+            var y = point.y
+            var z = point.z
+            return Vector3(
+                ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat(),
+                ((rotationMatrix.get(3) * x) + (rotationMatrix.get(4) * y) + (rotationMatrix.get(5) * z)).toFloat(),
+                ((rotationMatrix.get(6) * x) + (rotationMatrix.get(7) * y) + (rotationMatrix.get(8) * z)).toFloat(),
+            )
+        }
+    }
     protected val POINT_NOSE_TIP:Int = 1
     protected val POINT_NOSE_RIGHT:Int = 36
     protected val POINT_NOSE_LEFT:Int = 266
