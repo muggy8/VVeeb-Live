@@ -441,16 +441,19 @@ open class MediapipeManager (
         var z = pointsBuffer[(pointIndex * 5) + 2]
 
         // i have no idea what this sorcery does or how it works but my friend Jack did the galaxy brain math and came up with this and it works so err ya....
-        x = ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat()
-        y = ((rotationMatrix.get(4) * x) + (rotationMatrix.get(5) * y) + (rotationMatrix.get(6) * z)).toFloat()
-        z = ((rotationMatrix.get(8) * x) + (rotationMatrix.get(9) * y) + (rotationMatrix.get(10) * z)).toFloat()
+        var newx = ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat()
+        var newy = ((rotationMatrix.get(4) * x) + (rotationMatrix.get(5) * y) + (rotationMatrix.get(6) * z)).toFloat()
+        var newz = ((rotationMatrix.get(8) * x) + (rotationMatrix.get(9) * y) + (rotationMatrix.get(10) * z)).toFloat()
+        x = newx
+        y = newy
+        z = newz
 
         return Vector3(x, y, z)
     }
 
     // math from: https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
     protected fun getRotationMatrix(poseTransformMatrix: MatrixData):List<Double>{
-
+        // Compared to stackexchange post, matrix is trasposed
         val a = poseTransformMatrix.getPackedData(0)
         val b = poseTransformMatrix.getPackedData(1)
         val c = poseTransformMatrix.getPackedData(2)
@@ -461,14 +464,14 @@ open class MediapipeManager (
         val j = poseTransformMatrix.getPackedData(9)
         val k = poseTransformMatrix.getPackedData(10)
 
-        val scaleX = Math.sqrt(Math.pow(a.toDouble(), 2.0) + Math.pow(e.toDouble(), 2.0) + Math.pow(i.toDouble(), 2.0))
-        val scaleY = Math.sqrt(Math.pow(b.toDouble(), 2.0) + Math.pow(f.toDouble(), 2.0) + Math.pow(j.toDouble(), 2.0))
-        val scaleZ = Math.sqrt(Math.pow(c.toDouble(), 2.0) + Math.pow(g.toDouble(), 2.0) + Math.pow(k.toDouble(), 2.0))
+        val scaleX = Math.sqrt(Math.pow(a.toDouble(), 2.0) + Math.pow(b.toDouble(), 2.0) + Math.pow(c.toDouble(), 2.0))
+        val scaleY = Math.sqrt(Math.pow(e.toDouble(), 2.0) + Math.pow(f.toDouble(), 2.0) + Math.pow(g.toDouble(), 2.0))
+        val scaleZ = Math.sqrt(Math.pow(i.toDouble(), 2.0) + Math.pow(j.toDouble(), 2.0) + Math.pow(k.toDouble(), 2.0))
 
         val rotationMatrix: List<Double> = listOf(
-            a/scaleX, b/scaleY, c/scaleZ, 0.0,
-            e/scaleX, f/scaleY, g/scaleZ, 0.0,
-            i/scaleX, j/scaleY, k/scaleZ, 0.0,
+            a/scaleX, e/scaleY, i/scaleZ, 0.0,
+            b/scaleX, f/scaleY, j/scaleZ, 0.0,
+            c/scaleX, g/scaleY, k/scaleZ, 0.0,
             0.0, 0.0, 0.0, 1.0,
         )
 
