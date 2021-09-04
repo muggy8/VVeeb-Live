@@ -355,10 +355,11 @@ open class MediapipeManager (
 
             val faceGeometry = multiFaceGeometry.get(0)
             val poseTransformMatrix: MatrixData = faceGeometry.getPoseTransformMatrix()
+            var rotationMatrix:List<Double> = getRotationMatrix(poseTransformMatrix)
 
             var json = "["
             for (i in 0..467) {
-                val point = getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, i)
+                val point = getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, i)
                 var jsonBit = ""
                 if (i > 0){
                     jsonBit += ","
@@ -372,7 +373,7 @@ open class MediapipeManager (
             if (!saveDir.exists()) {
                 saveDir.mkdirs();
             }
-            val file = File(saveDir, "landmarks-face-3d.json")
+            val file = File(saveDir, "landmarks-face-3d-6.json")
             if (file.exists()){
                 file.delete()
             }
@@ -386,34 +387,34 @@ open class MediapipeManager (
                 e.printStackTrace();
             }
 
-            faceTrackingCallback(
-                PointsOfIntrest(
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_TIP),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_RIGHT),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_LEFT),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_LIP_TOP),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_LIP_BOTTOM),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_MOUTH_LEFT),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_MOUTH_RIGHT),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_HEAD_TOP),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_CHIN),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_LEFT),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_RIGHT),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_CENTER),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_LEFT),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_RIGHT),
-
-
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_TOP),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_BOTTOM),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_INNER),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_OUTER),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_TOP),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_BOTTOM),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_INNER),
-                    getPoint(poseTransformMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_OUTER),
-                )
-            )
+//            faceTrackingCallback(
+//                PointsOfIntrest(
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_TIP),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_RIGHT),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_LEFT),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LIP_TOP),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LIP_BOTTOM),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_MOUTH_LEFT),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_MOUTH_RIGHT),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_HEAD_TOP),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_CHIN),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_LEFT),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_RIGHT),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_NOSE_BRIDGE_CENTER),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_LEFT),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_FACE_MEASURE_RIGHT),
+//
+//
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_TOP),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_BOTTOM),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_INNER),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_OUTER),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_TOP),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_BOTTOM),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_INNER),
+//                    getPoint(rotationMatrix, faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_OUTER),
+//                )
+//            )
 
 //            Log.d(
 //                TAG,
@@ -434,21 +435,46 @@ open class MediapipeManager (
 
     lateinit var latestLandmarks: String;
 
-    protected fun getPoint(poseTransformMatrix: MatrixData, pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
+    protected fun getPoint(rotationMatrix: List<Double>, pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
         var x = pointsBuffer[pointIndex * 5]
         var y = pointsBuffer[(pointIndex * 5) + 1]
         var z = pointsBuffer[(pointIndex * 5) + 2]
 
         // i have no idea what this sorcery does or how it works but my friend Jack did the galaxy brain math and came up with this and it works so err ya....
-        x = (poseTransformMatrix.getPackedData(0) * x) + (poseTransformMatrix.getPackedData(4) * y) + (poseTransformMatrix.getPackedData(8) * z);
-        y = (poseTransformMatrix.getPackedData(1) * x) + (poseTransformMatrix.getPackedData(5) * y) + (poseTransformMatrix.getPackedData(9) * z);
-        z = (poseTransformMatrix.getPackedData(2) * x) + (poseTransformMatrix.getPackedData(6) * y) + (poseTransformMatrix.getPackedData(10) * z);
-        var w = (poseTransformMatrix.getPackedData(3) * x) + (poseTransformMatrix.getPackedData(7) * y) + (poseTransformMatrix.getPackedData(11) * z) + poseTransformMatrix.getPackedData(15);
-        x = x / w;
-        y = y / w;
-        z = z / w;
+        x = ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat()
+        y = ((rotationMatrix.get(4) * x) + (rotationMatrix.get(5) * y) + (rotationMatrix.get(6) * z)).toFloat()
+        z = ((rotationMatrix.get(8) * x) + (rotationMatrix.get(9) * y) + (rotationMatrix.get(10) * z)).toFloat()
 
         return Vector3(x, y, z)
+    }
+
+    // math from: https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
+    protected fun getRotationMatrix(poseTransformMatrix: MatrixData):List<Double>{
+
+        val a = poseTransformMatrix.getPackedData(0)
+        val b = poseTransformMatrix.getPackedData(1)
+        val c = poseTransformMatrix.getPackedData(2)
+        val e = poseTransformMatrix.getPackedData(4)
+        val f = poseTransformMatrix.getPackedData(5)
+        val g = poseTransformMatrix.getPackedData(6)
+        val i = poseTransformMatrix.getPackedData(8)
+        val j = poseTransformMatrix.getPackedData(9)
+        val k = poseTransformMatrix.getPackedData(10)
+
+        val scaleX = Math.sqrt(Math.pow(a.toDouble(), 2.0) + Math.pow(e.toDouble(), 2.0) + Math.pow(i.toDouble(), 2.0))
+        val scaleY = Math.sqrt(Math.pow(b.toDouble(), 2.0) + Math.pow(f.toDouble(), 2.0) + Math.pow(j.toDouble(), 2.0))
+        val scaleZ = Math.sqrt(Math.pow(c.toDouble(), 2.0) + Math.pow(g.toDouble(), 2.0) + Math.pow(k.toDouble(), 2.0))
+
+        val rotationMatrix: List<Double> = listOf(
+            a/scaleX, b/scaleY, c/scaleZ, 0.0,
+            e/scaleX, f/scaleY, g/scaleZ, 0.0,
+            i/scaleX, j/scaleY, k/scaleZ, 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        )
+
+        println(rotationMatrix)
+
+        return rotationMatrix
     }
 
     // points of intrest
