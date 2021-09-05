@@ -75,11 +75,6 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         return lifecycleRegistry
     }
 
-    var latestLandmarks: String = ""
-        get() {
-            return mediapipeManager.latestLandmarks
-        }
-
     fun open() {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
         try {
@@ -126,50 +121,51 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         }
     }
 
+    // a list of params live2D supported params
+    //   'ParamAngleX',
+    //   'ParamAngleY',
+    //   'ParamAngleZ',
+    //   'ParamEyeLOpen',
+    //   'ParamEyeLSmile',
+    //   'ParamEyeROpen',
+    //   'ParamEyeRSmile',
+    //   'ParamEyeBallX',
+    //   'ParamEyeBallY',
+    //   'ParamEyeBallForm',
+    //   'ParamBrowLY',
+    //   'ParamBrowRY',
+    //   'ParamBrowLX',
+    //   'ParamBrowRX',
+    //   'ParamBrowLAngle',
+    //   'ParamBrowRAngle',
+    //   'ParamBrowLForm',
+    //   'ParamBrowRForm',
+    //   'ParamMouthForm',
+    //   'ParamMouthOpenY',
+    //   'ParamCheek',
+    //   'ParamBodyAngleX',
+    //   'ParamBodyAngleY',
+    //   'ParamBodyAngleZ',
+    //   'ParamBreath',
+    //   'ParamArmLA',
+    //   'ParamArmRA',
+    //   'ParamArmLB',
+    //   'ParamArmRB',
+    //   'ParamHandL',
+    //   'ParamHandR',
+    //   'ParamHairFront',
+    //   'ParamHairSide',
+    //   'ParamHairBack',
+    //   'ParamHairFluffy',
+    //   'ParamShoulderY',
+    //   'ParamBustX',
+    //   'ParamBustY',
+    //   'ParamBaseX',
+    //   'ParamBaseY',
+
+    private fun onEyeTracking(){}
+
     private fun onFaceTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-        // a list of params live2D supported params
-        //   'ParamAngleX',
-        //   'ParamAngleY',
-        //   'ParamAngleZ',
-        //   'ParamEyeLOpen',
-        //   'ParamEyeLSmile',
-        //   'ParamEyeROpen',
-        //   'ParamEyeRSmile',
-        //   'ParamEyeBallX',
-        //   'ParamEyeBallY',
-        //   'ParamEyeBallForm',
-        //   'ParamBrowLY',
-        //   'ParamBrowRY',
-        //   'ParamBrowLX',
-        //   'ParamBrowRX',
-        //   'ParamBrowLAngle',
-        //   'ParamBrowRAngle',
-        //   'ParamBrowLForm',
-        //   'ParamBrowRForm',
-        //   'ParamMouthForm',
-        //   'ParamMouthOpenY',
-        //   'ParamCheek',
-        //   'ParamBodyAngleX',
-        //   'ParamBodyAngleY',
-        //   'ParamBodyAngleZ',
-        //   'ParamBreath',
-        //   'ParamArmLA',
-        //   'ParamArmRA',
-        //   'ParamArmLB',
-        //   'ParamArmRB',
-        //   'ParamHandL',
-        //   'ParamHandR',
-        //   'ParamHairFront',
-        //   'ParamHairSide',
-        //   'ParamHairBack',
-        //   'ParamHairFluffy',
-        //   'ParamShoulderY',
-        //   'ParamBustX',
-        //   'ParamBustY',
-        //   'ParamBaseX',
-        //   'ParamBaseY',
-
-
         mView.webview.post(Runnable {
             val angleX = Math.atan((pointsOfIntrest.noseTipTransformed.x/pointsOfIntrest.noseTipTransformed.z).toDouble())
             val angleY = Math.atan((pointsOfIntrest.noseTipTransformed.y/pointsOfIntrest.noseTipTransformed.z).toDouble())
@@ -179,14 +175,10 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             val mouthCenterY = pointsOfIntrest.lipTop.middlePointFrom(pointsOfIntrest.lipBottom)
             val mouthCenterX = pointsOfIntrest.mouthLeft.middlePointFrom(pointsOfIntrest.mouthRight)
 
-            val rightEyeDelta = pointsOfIntrest.rightEyelidTop.distanceFrom(pointsOfIntrest.rightEyelidBottom)
-            val leftEyeDelta = pointsOfIntrest.leftEyelidTop.distanceFrom(pointsOfIntrest.leftEyelidBottom)
-
-            println("leftEye: ${leftEyeDelta} | rightEye: ${rightEyeDelta}")
-
-            val live2Dparams:String = ("{"
-//                + "\"ParamEyeROpen\":${ -1 + clamp(logisticBias((rightEyeDelta - 0.55) * 2), 0.0, 1.0) },"
-//                + "\"ParamEyeLOpen\":${ -1 + clamp(logisticBias((leftEyeDelta - 0.55) * 2), 0.0, 1.0) },"
+            val live2Dparams:String = (
+                "{"
+                + "\"ParamEyeLSmile\":${ clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f) },"
+                + "\"ParamEyeRSmile\":${ clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f) },"
                 + "\"ParamMouthForm\":${ clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f) },"
                 + "\"ParamMouthOpenY\":${ clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f) },"
                 + "\"ParamAngleX\":${ clamp(Math.toDegrees(angleX), -30.0, 30.0) },"
@@ -194,8 +186,6 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                 + "\"ParamAngleZ\":${ clamp(Math.toDegrees(angleZ), -30.0, 30.0) }"
                 + "}"
             )
-
-//            println(live2Dparams)
 
             mView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
@@ -226,7 +216,7 @@ open class MediapipeManager (
     protected val context: Context,
     protected val lifecycleOwner: LifecycleOwner,
     protected val overlayView: View,
-    protected val faceTrackingCallback: (data:PointsOfIntrest)->Unit ?,
+    protected val faceTrackingCallback: (data:PointsOfIntrest)->Unit,
 ){
     private val TAG = "OverlayController" // for logging
 
@@ -265,15 +255,20 @@ open class MediapipeManager (
     protected val INPUT_STREAM_NAME:String = "input_video"
     protected val OUTPUT_STREAM_NAME:String = "output_video"
     protected val FOCAL_LENGTH_STREAM_NAME:String = "focal_length_pixel"
-    protected val OUTPUT_FACE_LANDMARKS_STREAM_NAME:String = "face_landmarks_with_iris"
-    protected val OUTPUT_EYE_LANDMARKS_STREAM_NAME:String = "right_eye_contour_landmarks"
+    protected val OUTPUT_EYE_LANDMARKS_STREAM_NAME:String = "face_landmarks_with_iris"
     protected val FLIP_FRAMES_VERTICALLY:Boolean = true
     protected val NUM_BUFFERS:Int = 2
 
     protected val OUTPUT_FACE_GEOMETRY_STREAM_NAME:String = "multi_face_geometry"
-    protected val MATRIX_TRANSLATION_Z_INDEX = 14
 
     protected var root: String = Environment.getExternalStorageDirectory().toString()
+
+    // initialize as identity matrix cuz we dont want to deal with it right now
+    var inverseTransformationMatrix:List<Double> = listOf(
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0,
+    )
 
     fun startTracking() {
         previewDisplayView = SurfaceView(context)
@@ -298,43 +293,54 @@ open class MediapipeManager (
 
         cameraHelper = CameraXPreviewHelper()
 
-//        processor.addPacketCallback(
-//            OUTPUT_EYE_LANDMARKS_STREAM_NAME
-//        ) { packet: Packet ->
-//            val landmarksRaw = PacketGetter.getProtoBytes(packet)
-//            try {
-//                val landmarks =
-//                    LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw)
-//                if (landmarks == null) {
-//                    Log.v(TAG, "[TS:" + packet.timestamp + "] No landmarks.")
-//                    return@addPacketCallback
-//                }
-//
-//
-//                var saveDir = File("$root/VVeeb2D")
-//                if (!saveDir.exists()) {
-//                    saveDir.mkdirs();
-//                }
-//                val file = File(saveDir, "eye-landmarks.txt")
-//                if (file.exists()){
-//                    file.delete()
-//                }
-//                try{
-//                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
-//                    outputStreamWriter.write(landmarks.toString())
-//                    outputStreamWriter.flush()
-//                    outputStreamWriter.close()
-//                    latestLandmarks = landmarks.toString()
-//                }
-//                catch (e:Exception) {
-//                    e.printStackTrace();
-//                }
-//
-//            } catch (e: InvalidProtocolBufferException) {
-//                Log.e(TAG, "Couldn't Exception received - $e")
-//                return@addPacketCallback
-//            }
-//        }
+        processor.addPacketCallback(
+            OUTPUT_EYE_LANDMARKS_STREAM_NAME
+        ) { packet: Packet ->
+            val landmarksRaw = PacketGetter.getProtoBytes(packet)
+            try {
+                val landmarks =
+                    LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw)
+                if (landmarks == null) {
+                    Log.v(TAG, "[TS:" + packet.timestamp + "] No landmarks.")
+                    return@addPacketCallback
+                }
+
+                var json = "["
+                landmarks.landmarkList.forEach { landmark:LandmarkProto.NormalizedLandmark ->
+                    if (json.length > 1){
+                        json += ", "
+                    }
+                    val updatedPoints = PointsOfIntrest.transformPoint(Vector3(landmark.x, landmark.y, landmark.z), inverseTransformationMatrix)
+
+                    json += "{\"x\":${updatedPoints.x},\"y\":${updatedPoints.y},\"z\":${updatedPoints.z}}"
+                }
+                json += "]"
+
+                var saveDir = File("$root/VVeeb2D")
+                if (!saveDir.exists()) {
+                    saveDir.mkdirs();
+                }
+                val file = File(saveDir, "landmarks-eyes-4.json")
+                if (file.exists()){
+                    file.delete()
+                }
+
+                try{
+                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
+                    outputStreamWriter.write(json)
+                    outputStreamWriter.flush()
+                    outputStreamWriter.close()
+                }
+                catch (e:Exception) {
+                    println("failed to write")
+                    e.printStackTrace();
+                }
+
+            } catch (e: InvalidProtocolBufferException) {
+                Log.e(TAG, "Couldn't Exception received - $e")
+                return@addPacketCallback
+            }
+        }
 
         processor.addPacketCallback(
             OUTPUT_FACE_GEOMETRY_STREAM_NAME
@@ -360,35 +366,35 @@ open class MediapipeManager (
             val poseTransformMatrix: MatrixData = faceGeometry.getPoseTransformMatrix()
             var rotationMatrix:List<Double> = getRotationMatrix(poseTransformMatrix)
 
-            var json = "["
-            for (i in 0..467) {
-                val point = getPoint(faceGeometry.mesh.vertexBufferList, i)
-                var jsonBit = ""
-                if (i > 0){
-                    jsonBit += ","
-                }
-                jsonBit += "{\"x\":${point.x},\"y\":${point.y},\"z\":${point.z}}"
-                json += jsonBit
-            }
-            json += "]"
-
-            var saveDir = File("$root/VVeeb2D")
-            if (!saveDir.exists()) {
-                saveDir.mkdirs();
-            }
-            val file = File(saveDir, "landmarks-face-3d-9.json")
-            if (file.exists()){
-                file.delete()
-            }
-            try{
-                val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
-                outputStreamWriter.write(json)
-                outputStreamWriter.flush()
-                outputStreamWriter.close()
-            }
-            catch (e:Exception) {
-                e.printStackTrace();
-            }
+//            var json = "["
+//            for (i in 0..467) {
+//                val point = getPoint(faceGeometry.mesh.vertexBufferList, i)
+//                var jsonBit = ""
+//                if (i > 0){
+//                    jsonBit += ","
+//                }
+//                jsonBit += "{\"x\":${point.x},\"y\":${point.y},\"z\":${point.z}}"
+//                json += jsonBit
+//            }
+//            json += "]"
+//
+//            var saveDir = File("$root/VVeeb2D")
+//            if (!saveDir.exists()) {
+//                saveDir.mkdirs();
+//            }
+//            val file = File(saveDir, "landmarks-face-3d-9.json")
+//            if (file.exists()){
+//                file.delete()
+//            }
+//            try{
+//                val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
+//                outputStreamWriter.write(json)
+//                outputStreamWriter.flush()
+//                outputStreamWriter.close()
+//            }
+//            catch (e:Exception) {
+//                e.printStackTrace();
+//            }
 
             faceTrackingCallback(
                 PointsOfIntrest(
@@ -420,6 +426,12 @@ open class MediapipeManager (
                 )
             )
 
+            inverseTransformationMatrix = inverse3x3Matrix(listOf(
+                poseTransformMatrix.getPackedData(0), poseTransformMatrix.getPackedData(4), poseTransformMatrix.getPackedData(8),
+                poseTransformMatrix.getPackedData(1), poseTransformMatrix.getPackedData(5), poseTransformMatrix.getPackedData(9),
+                poseTransformMatrix.getPackedData(2), poseTransformMatrix.getPackedData(6), poseTransformMatrix.getPackedData(10)
+            ).map {number->number.toDouble()})
+
 //            Log.d(
 //                TAG,
 //                "[TS:"
@@ -433,11 +445,7 @@ open class MediapipeManager (
         }
 
         resume()
-
-
     }
-
-    lateinit var latestLandmarks: String;
 
     protected fun getPoint(pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
         var x = pointsBuffer[pointIndex * 5]
@@ -445,17 +453,6 @@ open class MediapipeManager (
         var z = pointsBuffer[(pointIndex * 5) + 2]
 
         return Vector3(x, y, z)
-    }
-
-    protected fun transformPoint(rotationMatrix: List<Double>, point:Vector3):Vector3{
-        var x = point.x
-        var y = point.y
-        var z = point.z
-        return Vector3(
-            ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat(),
-            ((rotationMatrix.get(3) * x) + (rotationMatrix.get(4) * y) + (rotationMatrix.get(5) * z)).toFloat(),
-            ((rotationMatrix.get(6) * x) + (rotationMatrix.get(7) * y) + (rotationMatrix.get(8) * z)).toFloat(),
-        )
     }
 
     // math from: https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
@@ -482,6 +479,48 @@ open class MediapipeManager (
         )
 
         return rotationMatrix
+    }
+
+    protected fun inverse3x3Matrix(matrix:List<Double>):List<Double> {
+        // so i followed a website... i hope this works...
+        // source https://www.mathsisfun.com/algebra/matrix-inverse-minors-cofactors-adjugate.html
+
+        // get matrix values
+        val a = matrix[0]
+        val b = matrix[1]
+        val c = matrix[2]
+
+        val d = matrix[3]
+        val e = matrix[4]
+        val f = matrix[5]
+
+        val g = matrix[6]
+        val h = matrix[7]
+        val i = matrix[8]
+
+        // simple diagram
+        // a , b , c
+        // d , e , f
+        // g , h , i
+
+        // create Matrix of Minors and transform it into Matrix of Cofactors
+        val MatrixOfMinorsCofactored: List<Double> = listOf(
+            (e*i)-(h*f) , -((d*i)-(g*f)) , (d*h)-(g*e),
+            -((b*i)-(h*c)), (a*i)-(g*c), -((a*h)-(g*b)),
+            (b*f)-(e*c) , -((a*f)-(d*c)) , (a*e)-(d*b),
+        )
+
+        val adjugateMatrixOfMinorsCofactored: List<Double> = listOf(
+            MatrixOfMinorsCofactored[0], MatrixOfMinorsCofactored[3], MatrixOfMinorsCofactored[6],
+            MatrixOfMinorsCofactored[1], MatrixOfMinorsCofactored[4], MatrixOfMinorsCofactored[7],
+            MatrixOfMinorsCofactored[2], MatrixOfMinorsCofactored[5], MatrixOfMinorsCofactored[8],
+        )
+
+        // get the determinant
+        val determinant = (a * ((e*i)-(h*f))) - (b * ((d*i)-(g*f))) + (c * (d*h)-(g*e))
+        val inverseDeterminant = 1/determinant
+
+        return adjugateMatrixOfMinorsCofactored.map { numberAtPosition -> inverseDeterminant * numberAtPosition }
     }
 
     // points of intrest
@@ -511,85 +550,64 @@ open class MediapipeManager (
         protected val rotationMatrix: List<Double>
     ){
         val noseTipTransformed: Vector3
-            get() = transformPoint(noseTip)
+            get() = transformPoint(noseTip, rotationMatrix)
         val noseLeftTransformed: Vector3
-            get() = transformPoint(noseLeft)
+            get() = transformPoint(noseLeft, rotationMatrix)
         val noseRightTransformed: Vector3
-            get() = transformPoint(noseRight)
+            get() = transformPoint(noseRight, rotationMatrix)
         val lipTopTransformed: Vector3
-            get() = transformPoint(lipTop)
+            get() = transformPoint(lipTop, rotationMatrix)
         val lipBottomTransformed: Vector3
-            get() = transformPoint(lipBottom)
+            get() = transformPoint(lipBottom, rotationMatrix)
         val mouthLeftTransformed: Vector3
-            get() = transformPoint(mouthLeft)
+            get() = transformPoint(mouthLeft, rotationMatrix)
         val mouthRightTransformed: Vector3
-            get() = transformPoint(mouthRight)
+            get() = transformPoint(mouthRight, rotationMatrix)
         val headTopTransformed: Vector3
-            get() = transformPoint(headTop)
+            get() = transformPoint(headTop, rotationMatrix)
         val chinTransformed: Vector3
-            get() = transformPoint(chin)
+            get() = transformPoint(chin, rotationMatrix)
         val noseBridgeLeftTransformed: Vector3
-            get() = transformPoint(noseBridgeLeft)
+            get() = transformPoint(noseBridgeLeft, rotationMatrix)
         val noseBridgeRightTransformed: Vector3
-            get() = transformPoint(noseBridgeRight)
+            get() = transformPoint(noseBridgeRight, rotationMatrix)
         val noseBridgeCenterTransformed: Vector3
-            get() = transformPoint(noseBridgeCenter)
+            get() = transformPoint(noseBridgeCenter, rotationMatrix)
         val faceMeasureLeftTransformed: Vector3
-            get() = transformPoint(faceMeasureLeft)
+            get() = transformPoint(faceMeasureLeft, rotationMatrix)
         val faceMeasureRightTransformed: Vector3
-            get() = transformPoint(faceMeasureRight)
+            get() = transformPoint(faceMeasureRight, rotationMatrix)
         val leftEyelidTopTransformed: Vector3
-            get() = transformPoint(leftEyelidTop)
+            get() = transformPoint(leftEyelidTop, rotationMatrix)
         val leftEyelidBottomTransformed: Vector3
-            get() = transformPoint(leftEyelidBottom)
+            get() = transformPoint(leftEyelidBottom, rotationMatrix)
         val leftEyelidInnerTransformed: Vector3
-            get() = transformPoint(leftEyelidInner)
+            get() = transformPoint(leftEyelidInner, rotationMatrix)
         val leftEyelidOuterTransformed: Vector3
-            get() = transformPoint(leftEyelidOuter)
+            get() = transformPoint(leftEyelidOuter, rotationMatrix)
         val rightEyelidTopTransformed: Vector3
-            get() = transformPoint(rightEyelidTop)
+            get() = transformPoint(rightEyelidTop, rotationMatrix)
         val rightEyelidBottomTransformed: Vector3
-            get() = transformPoint(rightEyelidBottom)
+            get() = transformPoint(rightEyelidBottom, rotationMatrix)
         val rightEyelidInnerTransformed: Vector3
-            get() = transformPoint(rightEyelidInner)
+            get() = transformPoint(rightEyelidInner, rotationMatrix)
         val rightEyelidOuterTransformed: Vector3
-            get() = transformPoint(rightEyelidOuter)
-//        init {
-//            noseTipTransformed
-//            noseLeftTransformed
-//            noseRightTransformed
-//            lipTopTransformed
-//            lipBottomTransformed
-//            mouthLeftTransformed
-//            mouthRightTransformed
-//            headTopTransformed
-//            chinTransformed
-//            noseBridgeLeftTransformed
-//            noseBridgeRightTransformed
-//            noseBridgeCenterTransformed
-//            faceMeasureLeftTransformed
-//            faceMeasureRightTransformed
-//            leftEyelidTopTransformed
-//            leftEyelidBottomTransformed
-//            leftEyelidInnerTransformed
-//            leftEyelidOuterTransformed
-//            rightEyelidTopTransformed
-//            rightEyelidBottomTransformed
-//            rightEyelidInnerTransformed
-//            rightEyelidOuterTransformed
-//        }
+            get() = transformPoint(rightEyelidOuter, rotationMatrix)
 
-        protected fun transformPoint(point:Vector3):Vector3{
-            var x = point.x
-            var y = point.y
-            var z = point.z
-            return Vector3(
-                ((rotationMatrix.get(0) * x) + (rotationMatrix.get(1) * y) + (rotationMatrix.get(2) * z)).toFloat(),
-                ((rotationMatrix.get(3) * x) + (rotationMatrix.get(4) * y) + (rotationMatrix.get(5) * z)).toFloat(),
-                ((rotationMatrix.get(6) * x) + (rotationMatrix.get(7) * y) + (rotationMatrix.get(8) * z)).toFloat(),
-            )
+        companion object {
+            fun transformPoint(point:Vector3, transformMatrix: List<Double>):Vector3{
+                var x = point.x
+                var y = point.y
+                var z = point.z
+                return Vector3(
+                    ((transformMatrix.get(0) * x) + (transformMatrix.get(1) * y) + (transformMatrix.get(2) * z)).toFloat(),
+                    ((transformMatrix.get(3) * x) + (transformMatrix.get(4) * y) + (transformMatrix.get(5) * z)).toFloat(),
+                    ((transformMatrix.get(6) * x) + (transformMatrix.get(7) * y) + (transformMatrix.get(8) * z)).toFloat(),
+                )
+            }
         }
     }
+
     protected val POINT_NOSE_TIP:Int = 1
     protected val POINT_NOSE_RIGHT:Int = 36
     protected val POINT_NOSE_LEFT:Int = 266

@@ -2,7 +2,7 @@
     <head>
         <script>
 
-            fetch("landmarks-face-3d-9.json")
+            fetch("landmarks-eyes-1.json")
                 .then(owo=>owo.json())
                 .then(landmarks=>landmarks.forEach((landmark, index)=>{
                     let div = document.createElement("div")
@@ -62,9 +62,9 @@
                 border-radius: 2px;
                 transform:
                   translate3d(
-                    calc(var(--xpos, 0) * 30px),
-                    calc(var(--ypos, 0) * 30px),
-                    calc(var(--zpos, 0) * 30px)
+                    calc(var(--xpos, 0) * 300px),
+                    calc(var(--ypos, 0) * 300px),
+                    calc(var(--zpos, 0) * 300px)
                   )
                 ;
                 background-color: black;
@@ -163,7 +163,7 @@
             Z: <input type="range" id="z" min="0" max="1" step="0.01" oninput ="sceneData.z = parseFloat(this.value); sceneData.updateView()" value="0"/>
           </div>
           <div>
-            deg: <input type="range" id="z" min="-360" max="360" step="1" oninput ="sceneData.deg = parseFloat(this.value); sceneData.updateView()" value="0"/>
+            deg: <input type="range" id="deg" min="-360" max="360" step="1" oninput ="sceneData.deg = parseFloat(this.value); sceneData.updateView()" value="0"/>
           </div>
         </div>
         <script>

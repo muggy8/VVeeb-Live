@@ -179,8 +179,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopOverlay(){
         if (::foregroundServiceIntent.isInitialized){
-//            debugText.text = overlayService.overlay.latestLandmarks
-            setClipboard(this, overlayService.overlay.latestLandmarks)
             unbindService(connection)
             stopService(foregroundServiceIntent)
         }
