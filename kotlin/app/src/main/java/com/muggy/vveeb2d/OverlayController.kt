@@ -25,9 +25,6 @@ import android.webkit.WebMessage
 import androidx.core.math.MathUtils.clamp
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStreamWriter
 
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
@@ -65,8 +62,13 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         mParams!!.gravity = Gravity.BOTTOM or Gravity.LEFT
         mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        mediapipeManager = MediapipeManager(context, this, mView, {data:MediapipeManager.PointsOfIntrest
-            ->onFaceTracking(data)})
+        mediapipeManager = MediapipeManager(
+            context,
+            this,
+            mView,
+            {data:MediapipeManager.PointsOfIntrest->onFaceTracking(data)},
+            {data:MediapipeManager.PointsOfIntrest->onEyeTracking(data)},
+        )
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
     }
@@ -163,7 +165,38 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     //   'ParamBaseX',
     //   'ParamBaseY',
 
-    private fun onEyeTracking(){}
+    private fun onEyeTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
+        mView.webview.post({
+            val deltaEyelidsLeft = pointsOfIntrest.leftEyelidBottom.distanceFrom(pointsOfIntrest.leftEyelidTop)
+            val irisLeftHeight = pointsOfIntrest.irisLeftTop.distanceFrom(pointsOfIntrest.irisLeftBottom)
+            val deltaEyelidsRight = pointsOfIntrest.rightEyelidBottom.distanceFrom(pointsOfIntrest.rightEyelidTop)
+            val irisRightHeight = pointsOfIntrest.irisRightTop.distanceFrom(pointsOfIntrest.irisRightBottom)
+            val eyeOpenMeasurement = (
+                pointsOfIntrest.eyeAvarageA.distanceFrom(pointsOfIntrest.eyeAvarageB) +
+                pointsOfIntrest.eyeAvarageC.distanceFrom(pointsOfIntrest.eyeAvarageD) +
+                pointsOfIntrest.eyeAvarageE.distanceFrom(pointsOfIntrest.eyeAvarageF) +
+                pointsOfIntrest.eyeAvarageG.distanceFrom(pointsOfIntrest.eyeAvarageH)
+            ) / 4
+
+            val leftEyeOpen = deltaEyelidsLeft / (eyeOpenMeasurement)
+            val rightEyeOpen = deltaEyelidsRight / (eyeOpenMeasurement)
+
+            // ratio: 0.55 or higher = open | 0.4 or lower = closed
+            println("leftEyeOpen: ${leftEyeOpen} | rightEyeOpen: ${rightEyeOpen}")
+
+            val live2Dparams:String = (
+                "{"
+//                + "\"ParamEyeLOpen\":${ 0f - clamp(mapNumber(leftEyeOpen, 0.45f, 0.55f, 1f, 0f), 0.0f, 1.0f) },"
+//                + "\"ParamEyeROpen\":${ 0f - clamp(mapNumber(rightEyeOpen, 0.45f, 0.55f, 1f, 0f), 0.0f, 1.0f) }"
+                + "}"
+            )
+
+            mView.webview.postWebMessage(
+                WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                Uri.parse(rendererUrl)
+            )
+        })
+    }
 
     private fun onFaceTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
         mView.webview.post(Runnable {
@@ -217,6 +250,7 @@ open class MediapipeManager (
     protected val lifecycleOwner: LifecycleOwner,
     protected val overlayView: View,
     protected val faceTrackingCallback: (data:PointsOfIntrest)->Unit,
+    protected val eyeTrackingCallback: (data:PointsOfIntrest)->Unit,
 ){
     private val TAG = "OverlayController" // for logging
 
@@ -305,36 +339,79 @@ open class MediapipeManager (
                     return@addPacketCallback
                 }
 
-                var json = "["
-                landmarks.landmarkList.forEach { landmark:LandmarkProto.NormalizedLandmark ->
-                    if (json.length > 1){
-                        json += ", "
-                    }
-                    val updatedPoints = PointsOfIntrest.transformPoint(Vector3(landmark.x, landmark.y, landmark.z), inverseTransformationMatrix)
+//                var json = "["
+//                landmarks.landmarkList.forEach { landmark:LandmarkProto.NormalizedLandmark ->
+//                    if (json.length > 1){
+//                        json += ", "
+//                    }
+//                    val updatedPoints = PointsOfIntrest.transformPoint(Vector3(landmark.x, landmark.y, landmark.z), inverseTransformationMatrix)
+//
+//                    json += "{\"x\":${updatedPoints.x},\"y\":${updatedPoints.y},\"z\":${updatedPoints.z}}"
+//                }
+//                json += "]"
+//
+//                var saveDir = File("$root/VVeeb2D")
+//                if (!saveDir.exists()) {
+//                    saveDir.mkdirs();
+//                }
+//                val file = File(saveDir, "landmarks-eyes-4.json")
+//                if (file.exists()){
+//                    file.delete()
+//                }
+//
+//                try{
+//                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
+//                    outputStreamWriter.write(json)
+//                    outputStreamWriter.flush()
+//                    outputStreamWriter.close()
+//                }
+//                catch (e:Exception) {
+//                    println("failed to write")
+//                    e.printStackTrace();
+//                }
 
-                    json += "{\"x\":${updatedPoints.x},\"y\":${updatedPoints.y},\"z\":${updatedPoints.z}}"
-                }
-                json += "]"
 
-                var saveDir = File("$root/VVeeb2D")
-                if (!saveDir.exists()) {
-                    saveDir.mkdirs();
-                }
-                val file = File(saveDir, "landmarks-eyes-4.json")
-                if (file.exists()){
-                    file.delete()
-                }
+                var pointsForEyeTracking = PointsOfIntrest(
+                    getLandmark(landmarks, POINT_NOSE_TIP),
+                    getLandmark(landmarks, POINT_NOSE_RIGHT),
+                    getLandmark(landmarks, POINT_NOSE_LEFT),
+                    getLandmark(landmarks, POINT_LIP_TOP),
+                    getLandmark(landmarks, POINT_LIP_BOTTOM),
+                    getLandmark(landmarks, POINT_MOUTH_LEFT),
+                    getLandmark(landmarks, POINT_MOUTH_RIGHT),
+                    getLandmark(landmarks, POINT_HEAD_TOP),
+                    getLandmark(landmarks, POINT_CHIN),
+                    getLandmark(landmarks, POINT_NOSE_BRIDGE_LEFT),
+                    getLandmark(landmarks, POINT_NOSE_BRIDGE_RIGHT),
+                    getLandmark(landmarks, POINT_NOSE_BRIDGE_CENTER),
+                    getLandmark(landmarks, POINT_FACE_MEASURE_LEFT),
+                    getLandmark(landmarks, POINT_FACE_MEASURE_RIGHT),
 
-                try{
-                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
-                    outputStreamWriter.write(json)
-                    outputStreamWriter.flush()
-                    outputStreamWriter.close()
-                }
-                catch (e:Exception) {
-                    println("failed to write")
-                    e.printStackTrace();
-                }
+                    getLandmark(landmarks, POINT_LEFT_EYE_LID_TOP),
+                    getLandmark(landmarks, POINT_LEFT_EYE_LID_BOTTOM),
+                    getLandmark(landmarks, POINT_LEFT_EYE_LID_INNER),
+                    getLandmark(landmarks, POINT_LEFT_EYE_LID_OUTER),
+                    getLandmark(landmarks, POINT_RIGHT_EYE_LID_TOP),
+                    getLandmark(landmarks, POINT_RIGHT_EYE_LID_BOTTOM),
+                    getLandmark(landmarks, POINT_RIGHT_EYE_LID_INNER),
+                    getLandmark(landmarks, POINT_RIGHT_EYE_LID_OUTER),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_A),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_B),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_C),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_D),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_E),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_F),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_G),
+                    getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_H),
+                )
+                pointsForEyeTracking.irisLeft = getLandmark(landmarks, POINT_IRIS_LEFT)
+                pointsForEyeTracking.irisLeftTop = getLandmark(landmarks, POINT_IRIS_LEFT_TOP)
+                pointsForEyeTracking.irisLeftBottom = getLandmark(landmarks, POINT_IRIS_LEFT_BOTTOM)
+                pointsForEyeTracking.irisRight = getLandmark(landmarks, POINT_IRIS_RIGHT)
+                pointsForEyeTracking.irisRightTop = getLandmark(landmarks, POINT_IRIS_RIGHT_TOP)
+                pointsForEyeTracking.irisRightBottom = getLandmark(landmarks, POINT_IRIS_RIGHT_BOTTOM)
+
+                eyeTrackingCallback(pointsForEyeTracking)
 
             } catch (e: InvalidProtocolBufferException) {
                 Log.e(TAG, "Couldn't Exception received - $e")
@@ -422,6 +499,14 @@ open class MediapipeManager (
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_BOTTOM),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_INNER),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_OUTER),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_A),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_B),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_C),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_D),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_E),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_F),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_G),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_H),
                     rotationMatrix,
                 )
             )
@@ -453,6 +538,15 @@ open class MediapipeManager (
         var z = pointsBuffer[(pointIndex * 5) + 2]
 
         return Vector3(x, y, z)
+    }
+
+    protected fun getLandmark(landmarks: LandmarkProto.NormalizedLandmarkList, index: Int) : Vector3{
+        val landmark = landmarks.getLandmark(index)
+        return Vector3(
+            landmark.x,
+            landmark.y,
+            landmark.z,
+        )
     }
 
     // math from: https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
@@ -547,8 +641,25 @@ open class MediapipeManager (
         val rightEyelidBottom: Vector3,
         val rightEyelidInner: Vector3,
         val rightEyelidOuter: Vector3,
-        protected val rotationMatrix: List<Double>
+        val eyeAvarageA: Vector3,
+        val eyeAvarageB: Vector3,
+        val eyeAvarageC: Vector3,
+        val eyeAvarageD: Vector3,
+        val eyeAvarageE: Vector3,
+        val eyeAvarageF: Vector3,
+        val eyeAvarageG: Vector3,
+        val eyeAvarageH: Vector3,
+        // rotation matrix is optional
+        protected val rotationMatrix: List<Double> = listOf(1.0,0.0,0.0,  0.0,1.0,0.0,  0.0,0.0,1.0)
     ){
+        lateinit var irisRight: Vector3
+        lateinit var irisRightTop: Vector3
+        lateinit var irisRightBottom: Vector3
+
+        lateinit var irisLeft: Vector3
+        lateinit var irisLeftTop: Vector3
+        lateinit var irisLeftBottom: Vector3
+
         val noseTipTransformed: Vector3
             get() = transformPoint(noseTip, rotationMatrix)
         val noseLeftTransformed: Vector3
@@ -593,6 +704,22 @@ open class MediapipeManager (
             get() = transformPoint(rightEyelidInner, rotationMatrix)
         val rightEyelidOuterTransformed: Vector3
             get() = transformPoint(rightEyelidOuter, rotationMatrix)
+        val eyeAvarageATransformed: Vector3
+            get() = transformPoint(eyeAvarageA, rotationMatrix)
+        val eyeAvarageBTransformed: Vector3
+            get() = transformPoint(eyeAvarageB, rotationMatrix)
+        val eyeAvarageCTransformed: Vector3
+            get() = transformPoint(eyeAvarageC, rotationMatrix)
+        val eyeAvarageDTransformed: Vector3
+            get() = transformPoint(eyeAvarageD, rotationMatrix)
+        val eyeAvarageETransformed: Vector3
+            get() = transformPoint(eyeAvarageE, rotationMatrix)
+        val eyeAvarageFTransformed: Vector3
+            get() = transformPoint(eyeAvarageF, rotationMatrix)
+        val eyeAvarageGTransformed: Vector3
+            get() = transformPoint(eyeAvarageG, rotationMatrix)
+        val eyeAvarageHTransformed: Vector3
+            get() = transformPoint(eyeAvarageH, rotationMatrix)
 
         companion object {
             fun transformPoint(point:Vector3, transformMatrix: List<Double>):Vector3{
@@ -623,7 +750,11 @@ open class MediapipeManager (
     protected val POINT_FACE_MEASURE_LEFT = 124
     protected val POINT_FACE_MEASURE_RIGHT = 352
     protected val POINT_IRIS_LEFT = 473
+    protected val POINT_IRIS_LEFT_TOP = 475
+    protected val POINT_IRIS_LEFT_BOTTOM = 477
     protected val POINT_IRIS_RIGHT = 468
+    protected val POINT_IRIS_RIGHT_TOP = 470
+    protected val POINT_IRIS_RIGHT_BOTTOM = 472
     protected val POINT_LEFT_EYE_LID_TOP = 386
     protected val POINT_LEFT_EYE_LID_BOTTOM = 374
     protected val POINT_LEFT_EYE_LID_INNER = 362
@@ -632,8 +763,14 @@ open class MediapipeManager (
     protected val POINT_RIGHT_EYE_LID_BOTTOM = 145
     protected val POINT_RIGHT_EYE_LID_INNER = 133
     protected val POINT_RIGHT_EYE_LID_OUTER = 33
-    protected val POINT_FACE_CENTER_FINDER_LEFT = 454
-    protected val POINT_FACE_CENTER_FINDER_RIGHT = 234
+    protected val POINT_EYE_DISTANCE_AVARAGE_A = 197
+    protected val POINT_EYE_DISTANCE_AVARAGE_B = 195
+    protected val POINT_EYE_DISTANCE_AVARAGE_C = 18
+    protected val POINT_EYE_DISTANCE_AVARAGE_D = 200
+    protected val POINT_EYE_DISTANCE_AVARAGE_E = 5
+    protected val POINT_EYE_DISTANCE_AVARAGE_F = 195
+    protected val POINT_EYE_DISTANCE_AVARAGE_G = 9
+    protected val POINT_EYE_DISTANCE_AVARAGE_H = 8
 
 
     fun resume() {
