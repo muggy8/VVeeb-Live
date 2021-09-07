@@ -21,9 +21,13 @@ import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
+    val overlayWidthUpdateDebouncer = debounceFactory()
+    val overlayHeightUpdateDebouncer = debounceFactory()
+
     @SuppressLint("JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        var self = this
 
         setContentView(R.layout.activity_main)
         startOverlayButton.setOnClickListener { startOverlay() }
@@ -32,7 +36,7 @@ class MainActivity : AppCompatActivity() {
 
         setViewStateToOverlaying()
 
-        overlayWidth.setText("400")
+        overlayWidth.setText(CacheAccess.readString(self, "overlayWidth") ?: "400")
         overlayWidth.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {
                 if (::overlayService.isInitialized){
@@ -47,6 +51,10 @@ class MainActivity : AppCompatActivity() {
                         // whatever
                     }
                 }
+
+                overlayWidthUpdateDebouncer({ ->
+                    CacheAccess.writeString(self, "overlayWidth", s.toString())
+                }, 1000)
             }
 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
@@ -54,7 +62,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
         })
 
-        overlayHeight.setText("300")
+        overlayHeight.setText(CacheAccess.readString(self, "overlayHeight") ?: "300")
         overlayHeight.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {
                 if (::overlayService.isInitialized){
@@ -69,6 +77,10 @@ class MainActivity : AppCompatActivity() {
                         // whatever
                     }
                 }
+
+                overlayWidthUpdateDebouncer({ ->
+                    CacheAccess.writeString(self, "overlayHeight", s.toString())
+                }, 1000)
             }
 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
@@ -191,5 +203,4 @@ class MainActivity : AppCompatActivity() {
         }
         setViewStateToOverlaying()
     }
-
 }

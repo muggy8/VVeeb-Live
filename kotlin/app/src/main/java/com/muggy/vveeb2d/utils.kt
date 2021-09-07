@@ -1,8 +1,14 @@
 package com.muggy.vveeb2d
 
+import android.app.Activity
 import android.content.Context
 import kotlin.math.pow
 import kotlin.math.sqrt
+import android.content.SharedPreferences
+import android.content.SharedPreferences.Editor
+import android.provider.SyncStateContract
+import java.util.*
+import kotlin.collections.HashMap
 
 
 class JavascriptBindings(private val context: Context) {
@@ -89,7 +95,7 @@ class Vector3 (
     }
 
     operator fun unaryMinus(): Vector3 {
-        return Vector3(-x, -y, -z,)
+        return Vector3(-x, -y, -z)
     }
 
     companion object {
@@ -141,6 +147,24 @@ fun toAngles (x:Double, y:Double, z:Double, w:Double):EulerAngles {
     return EulerAngles(heading, attitude, bank)
 }
 
+class CacheAccess{
+    companion object{
+        fun writeString(activity: Activity, KEY: String?, property: String?) {
+            val editor =
+                activity.getPreferences (Context.MODE_PRIVATE)
+                    .edit()
+            editor.putString(KEY, property)
+            editor.apply()
+        }
+
+        fun readString(activity: Activity, KEY: String?): String? {
+            return activity.getPreferences (
+                Context.MODE_PRIVATE
+            ).getString(KEY, null)
+        }
+    }
+}
+
 fun mapNumber(
     value: Float,
     istart: Float,
@@ -156,4 +180,22 @@ fun logisticBias (input:Float, a: Float = 40f, c: Float = 1f, k:Float = 14f): Fl
 }
 fun logisticBias (input:Double, a: Double = 40.0, c: Double = 1.0, k:Double = 14.0): Double {
     return c / (1 + (a * Math.E.toFloat().pow(-k.toFloat()).pow(input.toFloat())))
+}
+
+
+fun debounceFactory():( ( ()->Unit ), Int ) -> Unit {
+    var callbackId:Int = 0
+    return fun (callback:(()->Unit?), ms:Int){
+
+        var currentInstanceCallbackId = callbackId + 1
+        callbackId = currentInstanceCallbackId
+
+        Timer().schedule(object : TimerTask() {
+            override fun run() {
+                if (callbackId == currentInstanceCallbackId){
+                    callback()
+                }
+            }
+        }, ms.toLong())
+    }
 }

@@ -10,10 +10,9 @@
     <ScrollView
         android:id="@+id/scrollView2"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="0dp"
-    >
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@+id/debugText"
+        app:layout_constraintTop_toTopOf="parent" tools:layout_editor_absoluteX="0dp">
 
         <LinearLayout
             android:id="@+id/scrollContents"
@@ -88,18 +87,18 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/modelPositioner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:textAlignment="center"
-                android:id="@+id/modelPositioner"
                 android:paddingTop="16dp"
+                android:textAlignment="center"
             >
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Position Model"
-                    android:textAlignment="center" android:textSize="16sp" android:textStyle="bold"></TextView>
+                    android:textAlignment="center" android:textSize="16sp" android:textStyle="bold"/>
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -111,23 +110,22 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="3"
                         android:orientation="vertical"
-                        android:paddingRight="8dp"></LinearLayout>
+                        android:paddingEnd="8dp"/>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="2"
                         android:orientation="vertical"
-                        android:paddingRight="8dp"
+                        android:paddingEnd="8dp"
                     >
 
                         <Button
+                            android:id="@+id/modelUp"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
-                            android:layout_centerHorizontal="true"
                             android:text="▲"
-                            android:id="@+id/modelUp"
-                        ></Button>
+                        />
                     </LinearLayout>
 
                     <LinearLayout
@@ -135,7 +133,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="3"
                         android:orientation="vertical"
-                        android:paddingRight="8dp"></LinearLayout>
+                        android:paddingEnd="8dp"/>
 
                 </LinearLayout>
 
@@ -150,14 +148,14 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical"
-                        android:paddingRight="8dp">
+                        android:paddingEnd="8dp">
 
                         <Button
+                            android:id="@+id/modelLeft"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="◀"
-                            android:id="@+id/modelLeft"
-                        ></Button>
+                        />
                     </LinearLayout>
 
 
@@ -165,28 +163,28 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:paddingRight="4dp"
+                        android:paddingEnd="4dp"
                     >
                         <Button
+                            android:id="@+id/modelIn"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="+"
-                            android:id="@+id/modelIn"
-                        ></Button>
+                        />
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:paddingLeft="4dp"
+                        android:paddingStart="4dp"
                     >
                         <Button
+                            android:id="@+id/modelOut"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="-"
-                            android:id="@+id/modelOut"
-                        ></Button>
+                        />
                     </LinearLayout>
 
                     <LinearLayout
@@ -195,14 +193,14 @@
                         android:layout_weight="1"
                         android:gravity="end"
                         android:orientation="vertical"
-                        android:paddingLeft="8dp"
+                        android:paddingStart="8dp"
                     >
                         <Button
+                            android:id="@+id/modelRight"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="▶"
-                            android:id="@+id/modelRight"
-                        ></Button>
+                        />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -217,21 +215,21 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="3"
                         android:orientation="vertical"
-                        android:paddingRight="8dp"></LinearLayout>
+                        android:paddingEnd="8dp"/>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="2"
                         android:orientation="vertical"
-                        android:paddingRight="8dp">
+                        android:paddingEnd="8dp">
 
                         <Button
+                            android:id="@+id/modelDown"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="▼"
-                            android:id="@+id/modelDown"
-                        ></Button>
+                        />
                     </LinearLayout>
 
                     <LinearLayout
@@ -239,7 +237,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="3"
                         android:orientation="vertical"
-                        android:paddingRight="8dp"></LinearLayout>
+                        android:paddingEnd="8dp"/>
 
                 </LinearLayout>
 
@@ -250,9 +248,11 @@
         android:id="@+id/debugText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Place your model in <storage>/VVeeb2D/model\n\nWrong:\n\t<model folder>\n\t\t|-myModel\n\t\t\t|-myModel.model3.json\n\t\t\t|-otherassets...\n\nRight:\n\t<model folder>\n\t\t|-myModel.model3.json\n\t\t|-otherassets..."
+        android:text="Place your model in {storage}/VVeeb2D/model\n\nWrong:\n\t{model folder}\n\t\t|-myModel\n\t\t\t|-myModel.model3.json\n\t\t\t|-otherassets...\n\nRight:\n\t{model folder}\n\t\t|-myModel.model3.json\n\t\t|-otherassets..."
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="scrollContents"
+        app:layout_constraintEnd_toEndOf="@+id/scrollView2"
+        app:layout_constraintStart_toStartOf="parent"
+        android:padding="16dp"
     />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
