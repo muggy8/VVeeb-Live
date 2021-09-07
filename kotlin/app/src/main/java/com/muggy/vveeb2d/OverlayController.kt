@@ -100,14 +100,12 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             WebView.setWebContentsDebuggingEnabled(true);
 
-            println("started web contents startup")
             mView.webview.loadUrl(rendererUrl)
             mView.webview.settings.apply {
                 javaScriptEnabled = true
                 setDomStorageEnabled(true)
 //                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
             }
-            println("finished web contents startup?")
 
         } catch (e: Exception) {
             Log.d("Error1", e.toString())

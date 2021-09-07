@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.IBinder
 import android.provider.Settings
 import android.text.Editable
@@ -15,6 +16,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
@@ -22,6 +24,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_main)
         startOverlayButton.setOnClickListener { startOverlay() }
 
@@ -142,6 +145,10 @@ class MainActivity : AppCompatActivity() {
     private fun startOverlay(){
         if (!isStoragePermissionGranted()){
             return
+        }
+        var modelDir = File("${Environment.getExternalStorageDirectory()}/VVeeb2D/model/")
+        if (!modelDir.exists()) {
+            modelDir.mkdirs();
         }
 
         if (!CameraPermissionHelper.hasCameraPermission(this)){
