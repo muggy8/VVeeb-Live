@@ -64,4 +64,7 @@ dependencies {
     def auto_value_version = '1.8.2'
     implementation "com.google.auto.value:auto-value-annotations:$auto_value_version"
     annotationProcessor "com.google.auto.value:auto-value:$auto_value_version"
+
+    // the httpserver we're gonna use
+    implementation 'org.nanohttpd:nanohttpd:2.2.0'
 }

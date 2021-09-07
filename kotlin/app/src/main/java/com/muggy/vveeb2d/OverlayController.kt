@@ -25,6 +25,7 @@ import android.webkit.WebMessage
 import androidx.core.math.MathUtils.clamp
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
+import kotlin.random.Random
 
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
@@ -32,13 +33,16 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
     private val layoutInflater: LayoutInflater
-    private val rendererUrl: String = "https://muggy8.github.io/VVeeb2D/"
+    private val rendererUrl: String
     var windowWidth: Int = 400
     var windowHeight: Int = 300
     private var mediapipeManager: MediapipeManager
     private var lifecycleRegistry: LifecycleRegistry
+    private var serverPort:Int
 
     init {
+        serverPort = Random.nextInt(5000, 50000)
+        rendererUrl = "http://127.0.0.1:${serverPort}"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // set the layout parameters of the window
             mParams = WindowManager.LayoutParams(
@@ -77,9 +81,15 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         return lifecycleRegistry
     }
 
+    private lateinit var server:RendererServer
+
     fun open() {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
         try {
+
+            server = RendererServer(serverPort, context)
+            server.start()
+
             // check if the view is already
             // inflated or present in the window
             if (mView.windowToken == null) {
@@ -90,14 +100,15 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             WebView.setWebContentsDebuggingEnabled(true);
 
-            mView.apply {
-                webview.loadUrl(rendererUrl)
-                webview.settings.apply {
-                    javaScriptEnabled = true
-                    setDomStorageEnabled(true)
-                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
-                }
+            println("started web contents startup")
+            mView.webview.loadUrl(rendererUrl)
+            mView.webview.settings.apply {
+                javaScriptEnabled = true
+                setDomStorageEnabled(true)
+//                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
             }
+            println("finished web contents startup?")
+
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }
@@ -121,6 +132,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         } catch (e: Exception) {
             Log.d("Error2", e.toString())
         }
+        server.stop()
     }
 
     // a list of params live2D supported params
@@ -165,12 +177,14 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     //   'ParamBaseX',
     //   'ParamBaseY',
 
+    private var faceLRDeg:Double = 0.0
+    private var faceUDDeg:Double = 0.0
     private fun onEyeTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
         mView.webview.post({
+
+            // eye lid tracking is kinda ass right now but we're just gonna make the most of what we have at the moment and try again later with a better library
             val deltaEyelidsLeft = pointsOfIntrest.leftEyelidBottom.distanceFrom(pointsOfIntrest.leftEyelidTop)
-            val irisLeftHeight = pointsOfIntrest.irisLeftTop.distanceFrom(pointsOfIntrest.irisLeftBottom)
             val deltaEyelidsRight = pointsOfIntrest.rightEyelidBottom.distanceFrom(pointsOfIntrest.rightEyelidTop)
-            val irisRightHeight = pointsOfIntrest.irisRightTop.distanceFrom(pointsOfIntrest.irisRightBottom)
             val eyeOpenMeasurement = (
                 pointsOfIntrest.eyeAvarageA.distanceFrom(pointsOfIntrest.eyeAvarageB) +
                 pointsOfIntrest.eyeAvarageC.distanceFrom(pointsOfIntrest.eyeAvarageD) +
@@ -178,16 +192,52 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                 pointsOfIntrest.eyeAvarageG.distanceFrom(pointsOfIntrest.eyeAvarageH)
             ) / 4
 
-            val leftEyeOpen = deltaEyelidsLeft / (eyeOpenMeasurement)
-            val rightEyeOpen = deltaEyelidsRight / (eyeOpenMeasurement)
+            var leftEyeOpen = deltaEyelidsLeft / (eyeOpenMeasurement)
+            var rightEyeOpen = deltaEyelidsRight / (eyeOpenMeasurement)
+            leftEyeOpen = mapNumber(leftEyeOpen, 0.75f, 0.64f, 0f, 1f)
+            leftEyeOpen = logisticBias(leftEyeOpen)
+            rightEyeOpen = mapNumber(rightEyeOpen, 0.75f, 0.64f, 0f, 1f)
+            rightEyeOpen = logisticBias(rightEyeOpen)
 
-            // ratio: 0.55 or higher = open | 0.4 or lower = closed
-            println("leftEyeOpen: ${leftEyeOpen} | rightEyeOpen: ${rightEyeOpen}")
+            // ratio: 0.77 or higher = open | 0.66 or lower = closed
+//            println("faceLRDeg: ${faceLRDeg} | leftEyeOpen: ${leftEyeOpen} | rightEyeOpen: ${rightEyeOpen}")
 
+            // rigth now we cheat cuz eye tracking on mediapipe is ass v.v
+            if (faceLRDeg < -15){
+                rightEyeOpen = leftEyeOpen
+            }
+            if (faceLRDeg > 15){
+                leftEyeOpen = rightEyeOpen
+            }
+
+            // eye gaze tracking
+            val rightEyeDistanceFromCenterEdge = pointsOfIntrest.irisRight.distanceFrom(pointsOfIntrest.rightEyelidInner)
+            val rightEyeDistanceFromOuterEdge = pointsOfIntrest.irisRight.distanceFrom(pointsOfIntrest.rightEyelidOuter)
+            val rightEyeWidth = pointsOfIntrest.rightEyelidOuter.distanceFrom(pointsOfIntrest.rightEyelidInner)
+
+            val leftEyeDistanceFromCenterEdge = pointsOfIntrest.irisLeft.distanceFrom(pointsOfIntrest.leftEyelidInner)
+            val leftEyeDistanceFromOuterEdge = pointsOfIntrest.irisLeft.distanceFrom(pointsOfIntrest.leftEyelidOuter)
+            val leftEyeWidth = pointsOfIntrest.leftEyelidOuter.distanceFrom(pointsOfIntrest.leftEyelidInner)
+
+            val avgHorizontalEyeDistance = (rightEyeWidth + leftEyeWidth) / 2
+            val avgFromRight = (rightEyeDistanceFromCenterEdge + leftEyeDistanceFromOuterEdge) / 2
+            val avgFromLeft = (rightEyeDistanceFromOuterEdge + leftEyeDistanceFromCenterEdge) / 2
+
+            val gazeLeftPercent = avgFromLeft/avgHorizontalEyeDistance
+            val gazeRightPercent = avgFromRight/avgHorizontalEyeDistance
+
+            // .65 = max one side .45 = min one side 0.55 = middle
+
+            val gazedir = (((gazeLeftPercent - 0.55f) * 10) + ((gazeRightPercent - 0.55f) * -10)) / 2
+
+//            println("gazeLeftPercent: ${gazeLeftPercent} | gazeRightPercent: ${gazeRightPercent} | gazedir: ${gazedir}")
+
+            // for now, we skip the stuff to do with the eyeball up down cuz eye tracking suck rn
             val live2Dparams:String = (
                 "{"
-//                + "\"ParamEyeLOpen\":${ 0f - clamp(mapNumber(leftEyeOpen, 0.45f, 0.55f, 1f, 0f), 0.0f, 1.0f) },"
-//                + "\"ParamEyeROpen\":${ 0f - clamp(mapNumber(rightEyeOpen, 0.45f, 0.55f, 1f, 0f), 0.0f, 1.0f) }"
+                + "\"ParamEyeBallX\":${ clamp(gazedir, -1f, 1f) },"
+                + "\"ParamEyeLOpen\":${ 0f - leftEyeOpen },"
+                + "\"ParamEyeROpen\":${ 0f - rightEyeOpen }"
                 + "}"
             )
 
@@ -199,11 +249,14 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     }
 
     private fun onFaceTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-        mView.webview.post(Runnable {
+        mView.webview.post({
             val angleX = Math.atan((pointsOfIntrest.noseTipTransformed.x/pointsOfIntrest.noseTipTransformed.z).toDouble())
             val angleY = Math.atan((pointsOfIntrest.noseTipTransformed.y/pointsOfIntrest.noseTipTransformed.z).toDouble())
             val angleZ = Math.atan((pointsOfIntrest.chinTransformed.x/pointsOfIntrest.chinTransformed.y).toDouble())
             val mouthDistanceY = pointsOfIntrest.lipTop.distanceFrom(pointsOfIntrest.lipBottom)
+
+            faceLRDeg = Math.toDegrees(angleX)
+            faceUDDeg = Math.toDegrees(angleY)
 
             val mouthCenterY = pointsOfIntrest.lipTop.middlePointFrom(pointsOfIntrest.lipBottom)
             val mouthCenterX = pointsOfIntrest.mouthLeft.middlePointFrom(pointsOfIntrest.mouthRight)
