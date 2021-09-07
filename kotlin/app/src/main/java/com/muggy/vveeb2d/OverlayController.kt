@@ -291,6 +291,20 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         mWindowManager.updateViewLayout(mView, mParams)
     }
 
+    fun setZoom(zoom:Float){
+        mView.webview.postWebMessage(
+            WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}"),
+            Uri.parse(rendererUrl)
+        )
+    }
+
+    fun setTranslation(x:Float, y:Float){
+        mView.webview.postWebMessage(
+            WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]"),
+            Uri.parse(rendererUrl)
+        )
+    }
+
     fun refreshView(){
         mView.refreshDrawableState()
     }

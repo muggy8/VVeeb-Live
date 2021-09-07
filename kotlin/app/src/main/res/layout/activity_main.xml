@@ -8,12 +8,15 @@
     tools:context=".MainActivity">
 
     <ScrollView
+        android:id="@+id/scrollView2"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:layout_editor_absoluteX="1dp"
-        tools:layout_editor_absoluteY="1dp">
+        tools:layout_editor_absoluteX="0dp"
+        tools:layout_editor_absoluteY="0dp"
+    >
 
         <LinearLayout
+            android:id="@+id/scrollContents"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -26,7 +29,7 @@
                 android:text="Start Streamer Mode"
                 app:layout_constraintBottom_toTopOf="@+id/stopOverlayButton"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+                app:layout_constraintStart_toStartOf="parent"/>
 
             <Button
                 android:id="@+id/stopOverlayButton"
@@ -35,16 +38,18 @@
                 android:text="Stop Streamer Mode"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+                app:layout_constraintStart_toStartOf="parent"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:paddingTop="16dp"
+            >
 
                 <LinearLayout
-                    android:layout_height="wrap_content"
                     android:layout_width="0dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:paddingRight="8dp">
@@ -52,19 +57,19 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Overlay Width"
-                        />
+                    />
 
                     <EditText
                         android:id="@+id/overlayWidth"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:ems="10"
-                        android:inputType="number" />
+                        android:inputType="number"/>
                 </LinearLayout>
 
                 <LinearLayout
-                    android:layout_height="wrap_content"
                     android:layout_width="0dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:paddingLeft="8dp">
@@ -72,19 +77,182 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Overlay Height"
-                        />
+                    />
                     <EditText
                         android:id="@+id/overlayHeight"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:ems="10"
-                        android:inputType="number" />
+                        android:inputType="number"/>
                 </LinearLayout>
             </LinearLayout>
 
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/debugText"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:textAlignment="center"
+                android:id="@+id/modelPositioner"
+                android:paddingTop="16dp"
+            >
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Position Model"
+                    android:textAlignment="center" android:textSize="16sp" android:textStyle="bold"></TextView>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                >
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="3"
+                        android:orientation="vertical"
+                        android:paddingRight="8dp"></LinearLayout>
 
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:orientation="vertical"
+                        android:paddingRight="8dp"
+                    >
+
+                        <Button
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_centerHorizontal="true"
+                            android:text="▲"
+                            android:id="@+id/modelUp"
+                        ></Button>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="3"
+                        android:orientation="vertical"
+                        android:paddingRight="8dp"></LinearLayout>
+
+                </LinearLayout>
+
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:paddingRight="8dp">
+
+                        <Button
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="◀"
+                            android:id="@+id/modelLeft"
+                        ></Button>
+                    </LinearLayout>
+
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingRight="4dp"
+                    >
+                        <Button
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="+"
+                            android:id="@+id/modelIn"
+                        ></Button>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingLeft="4dp"
+                    >
+                        <Button
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="-"
+                            android:id="@+id/modelOut"
+                        ></Button>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:orientation="vertical"
+                        android:paddingLeft="8dp"
+                    >
+                        <Button
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="▶"
+                            android:id="@+id/modelRight"
+                        ></Button>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                >
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="3"
+                        android:orientation="vertical"
+                        android:paddingRight="8dp"></LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:orientation="vertical"
+                        android:paddingRight="8dp">
+
+                        <Button
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="▼"
+                            android:id="@+id/modelDown"
+                        ></Button>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="3"
+                        android:orientation="vertical"
+                        android:paddingRight="8dp"></LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
+    <TextView
+        android:id="@+id/debugText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Place your model in <storage>/VVeeb2D/model\n\nWrong:\n\t<model folder>\n\t\t|-myModel\n\t\t\t|-myModel.model3.json\n\t\t\t|-otherassets...\n\nRight:\n\t<model folder>\n\t\t|-myModel.model3.json\n\t\t|-otherassets..."
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="scrollContents"
+    />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
