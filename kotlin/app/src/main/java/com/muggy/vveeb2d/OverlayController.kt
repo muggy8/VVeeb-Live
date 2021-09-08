@@ -8,7 +8,6 @@ import android.os.Environment
 import android.util.Log
 import android.util.Size
 import android.view.*
-import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -22,10 +21,19 @@ import com.google.mediapipe.framework.PacketGetter
 import com.google.mediapipe.formats.proto.MatrixDataProto.MatrixData;
 import com.google.mediapipe.modules.facegeometry.FaceGeometryProto.FaceGeometry;
 import android.webkit.WebMessage
+import android.webkit.WebViewClient
 import androidx.core.math.MathUtils.clamp
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
+import android.graphics.Bitmap
+import android.webkit.WebResourceRequest
+
+
+
+
+
+
 
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
@@ -39,6 +47,10 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     private var mediapipeManager: MediapipeManager
     private var lifecycleRegistry: LifecycleRegistry
     private var serverPort:Int
+    private var webViewClient: WebViewClient
+
+    private var webViewIsReady:Boolean = false
+    private var webviewReadyCallbacks:MutableList<(()->Unit?)> = mutableListOf()
 
     init {
         serverPort = Random.nextInt(5000, 50000)
@@ -75,6 +87,17 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         )
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+
+        webViewClient = object : WebViewClient() {
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                // do your logic
+                webViewIsReady = true
+                webviewReadyCallbacks.forEach({ callback -> callback() })
+                webviewReadyCallbacks = mutableListOf()
+            }
+
+        }
     }
 
     override fun getLifecycle(): Lifecycle {
@@ -100,6 +123,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             WebView.setWebContentsDebuggingEnabled(true);
 
+            mView.webview.setWebViewClient(webViewClient)
             mView.webview.loadUrl(rendererUrl)
             mView.webview.settings.apply {
                 javaScriptEnabled = true
@@ -292,17 +316,38 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     }
 
     fun setZoom(zoom:Float){
-        mView.webview.postWebMessage(
-            WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}"),
-            Uri.parse(rendererUrl)
-        )
+
+        if (webViewIsReady){
+            mView.webview.postWebMessage(
+                WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}}"),
+                Uri.parse(rendererUrl)
+            )
+        }
+        else{
+            webviewReadyCallbacks.add({
+                mView.webview.postWebMessage(
+                    WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}}"),
+                    Uri.parse(rendererUrl)
+                )
+            })
+        }
     }
 
     fun setTranslation(x:Float, y:Float){
-        mView.webview.postWebMessage(
-            WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]"),
-            Uri.parse(rendererUrl)
-        )
+        if (webViewIsReady){
+            mView.webview.postWebMessage(
+                WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]}"),
+                Uri.parse(rendererUrl)
+            )
+        }
+        else{
+            webviewReadyCallbacks.add({
+                mView.webview.postWebMessage(
+                    WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]}"),
+                    Uri.parse(rendererUrl)
+                )
+            })
+        }
     }
 
     fun refreshView(){
