@@ -21,8 +21,9 @@ import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
-    val overlayWidthUpdateDebouncer = debounceFactory()
-    val overlayHeightUpdateDebouncer = debounceFactory()
+    var modelX:Float = 1.0f
+    var modelY:Float = 1.0f
+    var modelZoom:Float = 1.0f
 
     @SuppressLint("JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
 
         setViewStateToOverlaying()
 
+        val overlayWidthUpdateDebouncer = debounceFactory()
         overlayWidth.setText(CacheAccess.readString(self, "overlayWidth") ?: "400")
         overlayWidth.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {
@@ -52,7 +54,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                overlayWidthUpdateDebouncer({ ->
+                overlayWidthUpdateDebouncer({
                     CacheAccess.writeString(self, "overlayWidth", s.toString())
                 }, 1000)
             }
@@ -62,6 +64,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
         })
 
+        val overlayHeightUpdateDebouncer = debounceFactory()
         overlayHeight.setText(CacheAccess.readString(self, "overlayHeight") ?: "300")
         overlayHeight.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {
@@ -78,7 +81,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                overlayWidthUpdateDebouncer({ ->
+                overlayHeightUpdateDebouncer({
                     CacheAccess.writeString(self, "overlayHeight", s.toString())
                 }, 1000)
             }
@@ -87,6 +90,70 @@ class MainActivity : AppCompatActivity() {
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
         })
+
+        modelX = (CacheAccess.readString(this, "modelX"))?.toFloat() ?: 1.0f
+        modelY = (CacheAccess.readString(this, "modelY"))?.toFloat() ?: 1.0f
+        modelZoom = (CacheAccess.readString(this, "modelZoom"))?.toFloat() ?: 1.0f
+
+        val modelYUpdateDebouncer = debounceFactory()
+        modelUp.setOnClickListener {
+            modelY += 0.1f
+            modelYUpdateDebouncer({
+                CacheAccess.writeString(self, "modelY", modelY.toString())
+            }, 1000)
+            if (::overlayService.isInitialized) {
+                try { overlayService.overlay.setTranslation(modelX, modelY) } catch (e: Exception){}
+            }
+        }
+        modelDown.setOnClickListener {
+            modelY -= 0.1f
+            modelYUpdateDebouncer({
+                CacheAccess.writeString(self, "modelY", modelY.toString())
+            }, 1000)
+            if (::overlayService.isInitialized) {
+                try { overlayService.overlay.setTranslation(modelX, modelY) } catch (e: Exception){}
+            }
+        }
+
+        val modelXUpdateDebouncer = debounceFactory()
+        modelLeft.setOnClickListener {
+            modelX += 0.1f
+            modelXUpdateDebouncer({
+                CacheAccess.writeString(self, "modelX", modelX.toString())
+            }, 1000)
+            if (::overlayService.isInitialized) {
+                try { overlayService.overlay.setTranslation(modelX, modelY) } catch (e: Exception){}
+            }
+        }
+        modelRight.setOnClickListener {
+            modelX -= 0.1f
+            modelXUpdateDebouncer({
+                CacheAccess.writeString(self, "modelX", modelX.toString())
+            }, 1000)
+            if (::overlayService.isInitialized) {
+                try { overlayService.overlay.setTranslation(modelX, modelY) } catch (e: Exception){}
+            }
+        }
+
+        val modelZoomUpdateDebouncer = debounceFactory()
+        modelIn.setOnClickListener {
+            modelZoom += 0.1f
+            modelZoomUpdateDebouncer({
+                CacheAccess.writeString(self, "modelZoom", modelZoom.toString())
+            }, 1000)
+            if (::overlayService.isInitialized) {
+                try { overlayService.overlay.setZoom(modelZoom) } catch (e: Exception){}
+            }
+        }
+        modelOut.setOnClickListener {
+            modelZoom -= 0.1f
+            modelZoomUpdateDebouncer({
+                CacheAccess.writeString(self, "modelZoom", modelZoom.toString())
+            }, 1000)
+            if (::overlayService.isInitialized) {
+                try { overlayService.overlay.setZoom(modelZoom) } catch (e: Exception){}
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -138,6 +205,9 @@ class MainActivity : AppCompatActivity() {
                 overlayWidth.text.toString().toInt(),
                 overlayHeight.text.toString().toInt(),
             )
+
+            overlayService.overlay.setTranslation(modelX, modelY)
+            overlayService.overlay.setZoom(modelZoom)
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -147,10 +217,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setViewStateToNotOverlaying(){
         stopOverlayButton.setVisibility(View.VISIBLE)
+        modelPositioner.setVisibility(View.VISIBLE)
         startOverlayButton.setVisibility(View.GONE)
     }
     private fun setViewStateToOverlaying(){
         stopOverlayButton.setVisibility(View.GONE)
+        modelPositioner.setVisibility(View.GONE)
         startOverlayButton.setVisibility(View.VISIBLE)
     }
 
