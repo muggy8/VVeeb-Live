@@ -27,6 +27,7 @@ import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.webkit.WebResourceRequest
 
 
@@ -124,6 +125,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             WebView.setWebContentsDebuggingEnabled(true);
 
             mView.webview.setWebViewClient(webViewClient)
+            mView.webview.setBackgroundColor(Color.TRANSPARENT);
             mView.webview.loadUrl(rendererUrl)
             mView.webview.settings.apply {
                 javaScriptEnabled = true
