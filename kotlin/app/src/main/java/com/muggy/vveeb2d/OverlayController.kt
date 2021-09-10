@@ -15,7 +15,7 @@ import androidx.lifecycle.LifecycleRegistry
 import com.google.mediapipe.components.*
 import com.google.mediapipe.framework.*
 import com.google.mediapipe.glutil.EglManager
-import kotlinx.android.synthetic.main.overlay.view.*
+import kotlinx.android.synthetic.main.model_overlay.view.*
 import java.util.*
 import com.google.mediapipe.framework.PacketGetter
 import com.google.mediapipe.formats.proto.MatrixDataProto.MatrixData;
@@ -26,19 +26,11 @@ import androidx.core.math.MathUtils.clamp
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
-import android.graphics.Bitmap
 import android.graphics.Color
-import android.webkit.WebResourceRequest
-
-
-
-
-
-
 
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
-    private val mView: View
+    private val vtuberModelView: View
     private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
     private val layoutInflater: LayoutInflater
@@ -71,7 +63,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         // getting a LayoutInflater
         layoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         // inflating the view with the custom layout we created
-        mView = layoutInflater.inflate(R.layout.overlay, null)
+        vtuberModelView = layoutInflater.inflate(R.layout.model_overlay, null)
         // set onClickListener on the remove button, which removes
         // the view from the window
         // Define the position of the
@@ -82,7 +74,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         mediapipeManager = MediapipeManager(
             context,
             this,
-            mView,
+            vtuberModelView,
             {data:MediapipeManager.PointsOfIntrest->onFaceTracking(data)},
             {data:MediapipeManager.PointsOfIntrest->onEyeTracking(data)},
         )
@@ -110,51 +102,58 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     fun open() {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
         try {
-
             server = RendererServer(serverPort, context)
             server.start()
+        } catch (e: Exception) {
+            Log.d("Error1", e.toString())
+        }
+    }
 
-            // check if the view is already
-            // inflated or present in the window
-            if (mView.windowToken == null) {
-                if (mView.parent == null) {
-                    mWindowManager.addView(mView, mParams)
+    var vtuberStarted = false
+    fun startVtuberOverlay (){
+        try {
+            if (vtuberModelView.windowToken == null) {
+                if (vtuberModelView.parent == null) {
+                    mWindowManager.addView(vtuberModelView, mParams)
                 }
             }
 
             WebView.setWebContentsDebuggingEnabled(true);
 
-            mView.webview.setWebViewClient(webViewClient)
-            mView.webview.setBackgroundColor(Color.TRANSPARENT);
-            mView.webview.loadUrl(rendererUrl)
-            mView.webview.settings.apply {
+            vtuberModelView.webview.setWebViewClient(webViewClient)
+            vtuberModelView.webview.setBackgroundColor(Color.TRANSPARENT);
+            vtuberModelView.webview.loadUrl(rendererUrl)
+            vtuberModelView.webview.settings.apply {
                 javaScriptEnabled = true
                 setDomStorageEnabled(true)
 //                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
             }
-
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }
+
+        vtuberStarted = true
         mediapipeManager.startTracking()
-        println("started face tracking")
     }
 
     fun close() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-        mediapipeManager.pause()
-        try {
-            // remove the view from the window
-            (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(mView)
-            // invalidate the view
-            mView.invalidate()
-            // remove all views
-            (mView.parent as ViewGroup).removeAllViews()
+        if (vtuberStarted){
+            mediapipeManager.pause()
+            vtuberStarted = false
+            try {
+                // remove the view from the window
+                (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(vtuberModelView)
+                // invalidate the view
+                vtuberModelView.invalidate()
+                // remove all views
+                (vtuberModelView.parent as ViewGroup).removeAllViews()
 
-            // the above steps are necessary when you are adding and removing
-            // the view simultaneously, it might give some exceptions
-        } catch (e: Exception) {
-            Log.d("Error2", e.toString())
+                // the above steps are necessary when you are adding and removing
+                // the view simultaneously, it might give some exceptions
+            } catch (e: Exception) {
+                Log.d("Error2", e.toString())
+            }
         }
         server.stop()
     }
@@ -204,17 +203,17 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     private var faceLRDeg:Double = 0.0
     private var faceUDDeg:Double = 0.0
     private fun onEyeTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-        mView.webview.post({
+        vtuberModelView.webview.post {
 
             // eye lid tracking is kinda ass right now but we're just gonna make the most of what we have at the moment and try again later with a better library
             val deltaEyelidsLeft = pointsOfIntrest.leftEyelidBottom.distanceFrom(pointsOfIntrest.leftEyelidTop)
             val deltaEyelidsRight = pointsOfIntrest.rightEyelidBottom.distanceFrom(pointsOfIntrest.rightEyelidTop)
             val eyeOpenMeasurement = (
-                pointsOfIntrest.eyeAvarageA.distanceFrom(pointsOfIntrest.eyeAvarageB) +
-                pointsOfIntrest.eyeAvarageC.distanceFrom(pointsOfIntrest.eyeAvarageD) +
-                pointsOfIntrest.eyeAvarageE.distanceFrom(pointsOfIntrest.eyeAvarageF) +
-                pointsOfIntrest.eyeAvarageG.distanceFrom(pointsOfIntrest.eyeAvarageH)
-            ) / 4
+                    pointsOfIntrest.eyeAvarageA.distanceFrom(pointsOfIntrest.eyeAvarageB) +
+                            pointsOfIntrest.eyeAvarageC.distanceFrom(pointsOfIntrest.eyeAvarageD) +
+                            pointsOfIntrest.eyeAvarageE.distanceFrom(pointsOfIntrest.eyeAvarageF) +
+                            pointsOfIntrest.eyeAvarageG.distanceFrom(pointsOfIntrest.eyeAvarageH)
+                    ) / 4
 
             var leftEyeOpen = deltaEyelidsLeft / (eyeOpenMeasurement)
             var rightEyeOpen = deltaEyelidsRight / (eyeOpenMeasurement)
@@ -227,15 +226,16 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 //            println("faceLRDeg: ${faceLRDeg} | leftEyeOpen: ${leftEyeOpen} | rightEyeOpen: ${rightEyeOpen}")
 
             // rigth now we cheat cuz eye tracking on mediapipe is ass v.v
-            if (faceLRDeg < -15){
+            if (faceLRDeg < -15) {
                 rightEyeOpen = leftEyeOpen
             }
-            if (faceLRDeg > 15){
+            if (faceLRDeg > 15) {
                 leftEyeOpen = rightEyeOpen
             }
 
             // eye gaze tracking
-            val rightEyeDistanceFromCenterEdge = pointsOfIntrest.irisRight.distanceFrom(pointsOfIntrest.rightEyelidInner)
+            val rightEyeDistanceFromCenterEdge =
+                pointsOfIntrest.irisRight.distanceFrom(pointsOfIntrest.rightEyelidInner)
             val rightEyeDistanceFromOuterEdge = pointsOfIntrest.irisRight.distanceFrom(pointsOfIntrest.rightEyelidOuter)
             val rightEyeWidth = pointsOfIntrest.rightEyelidOuter.distanceFrom(pointsOfIntrest.rightEyelidInner)
 
@@ -247,8 +247,8 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             val avgFromRight = (rightEyeDistanceFromCenterEdge + leftEyeDistanceFromOuterEdge) / 2
             val avgFromLeft = (rightEyeDistanceFromOuterEdge + leftEyeDistanceFromCenterEdge) / 2
 
-            val gazeLeftPercent = avgFromLeft/avgHorizontalEyeDistance
-            val gazeRightPercent = avgFromRight/avgHorizontalEyeDistance
+            val gazeLeftPercent = avgFromLeft / avgHorizontalEyeDistance
+            val gazeRightPercent = avgFromRight / avgHorizontalEyeDistance
 
             // .65 = max one side .45 = min one side 0.55 = middle
 
@@ -257,26 +257,28 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 //            println("gazeLeftPercent: ${gazeLeftPercent} | gazeRightPercent: ${gazeRightPercent} | gazedir: ${gazedir}")
 
             // for now, we skip the stuff to do with the eyeball up down cuz eye tracking suck rn
-            val live2Dparams:String = (
-                "{"
-                + "\"ParamEyeBallX\":${ clamp(gazedir, -1f, 1f) },"
-                + "\"ParamEyeLOpen\":${ 0f - leftEyeOpen },"
-                + "\"ParamEyeROpen\":${ 0f - rightEyeOpen }"
-                + "}"
-            )
+            val live2Dparams: String = (
+                    "{"
+                            + "\"ParamEyeBallX\":${clamp(gazedir, -1f, 1f)},"
+                            + "\"ParamEyeLOpen\":${0f - leftEyeOpen},"
+                            + "\"ParamEyeROpen\":${0f - rightEyeOpen}"
+                            + "}"
+                    )
 
-            mView.webview.postWebMessage(
+            vtuberModelView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
                 Uri.parse(rendererUrl)
             )
-        })
+        }
     }
 
     private fun onFaceTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-        mView.webview.post({
-            val angleX = Math.atan((pointsOfIntrest.noseTipTransformed.x/pointsOfIntrest.noseTipTransformed.z).toDouble())
-            val angleY = Math.atan((pointsOfIntrest.noseTipTransformed.y/pointsOfIntrest.noseTipTransformed.z).toDouble())
-            val angleZ = Math.atan((pointsOfIntrest.chinTransformed.x/pointsOfIntrest.chinTransformed.y).toDouble())
+        vtuberModelView.webview.post {
+            val angleX =
+                Math.atan((pointsOfIntrest.noseTipTransformed.x / pointsOfIntrest.noseTipTransformed.z).toDouble())
+            val angleY =
+                Math.atan((pointsOfIntrest.noseTipTransformed.y / pointsOfIntrest.noseTipTransformed.z).toDouble())
+            val angleZ = Math.atan((pointsOfIntrest.chinTransformed.x / pointsOfIntrest.chinTransformed.y).toDouble())
             val mouthDistanceY = pointsOfIntrest.lipTop.distanceFrom(pointsOfIntrest.lipBottom)
 
             faceLRDeg = Math.toDegrees(angleX)
@@ -285,24 +287,24 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             val mouthCenterY = pointsOfIntrest.lipTop.middlePointFrom(pointsOfIntrest.lipBottom)
             val mouthCenterX = pointsOfIntrest.mouthLeft.middlePointFrom(pointsOfIntrest.mouthRight)
 
-            val live2Dparams:String = (
-                "{"
-                + "\"ParamEyeLSmile\":${ clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f) },"
-                + "\"ParamEyeRSmile\":${ clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f) },"
-                + "\"ParamMouthForm\":${ clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f) },"
-                + "\"ParamMouthOpenY\":${ clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f) },"
-                + "\"ParamAngleX\":${ clamp(Math.toDegrees(angleX), -30.0, 30.0) },"
-                + "\"ParamAngleY\":${ clamp(Math.toDegrees(angleY), -30.0, 30.0) },"
-                + "\"ParamAngleZ\":${ clamp(Math.toDegrees(angleZ), -30.0, 30.0) }"
-                + "}"
-            )
+            val live2Dparams: String = (
+                    "{"
+                            + "\"ParamEyeLSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
+                            + "\"ParamEyeRSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
+                            + "\"ParamMouthForm\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f)},"
+                            + "\"ParamMouthOpenY\":${clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f)},"
+                            + "\"ParamAngleX\":${clamp(Math.toDegrees(angleX), -30.0, 30.0)},"
+                            + "\"ParamAngleY\":${clamp(Math.toDegrees(angleY), -30.0, 30.0)},"
+                            + "\"ParamAngleZ\":${clamp(Math.toDegrees(angleZ), -30.0, 30.0)}"
+                            + "}"
+                    )
 
-            mView.webview.postWebMessage(
+            vtuberModelView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
                 Uri.parse(rendererUrl)
             )
 
-        })
+        }
 
 
     }
@@ -314,46 +316,46 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         windowWidth = width
         windowHeight = height
 
-        mWindowManager.updateViewLayout(mView, mParams)
+        mWindowManager.updateViewLayout(vtuberModelView, mParams)
     }
 
     fun setZoom(zoom:Float){
 
         if (webViewIsReady){
-            mView.webview.postWebMessage(
+            vtuberModelView.webview.postWebMessage(
                 WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}}"),
                 Uri.parse(rendererUrl)
             )
         }
         else{
-            webviewReadyCallbacks.add({
-                mView.webview.postWebMessage(
+            webviewReadyCallbacks.add {
+                vtuberModelView.webview.postWebMessage(
                     WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}}"),
                     Uri.parse(rendererUrl)
                 )
-            })
+            }
         }
     }
 
     fun setTranslation(x:Float, y:Float){
         if (webViewIsReady){
-            mView.webview.postWebMessage(
+            vtuberModelView.webview.postWebMessage(
                 WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]}"),
                 Uri.parse(rendererUrl)
             )
         }
         else{
-            webviewReadyCallbacks.add({
-                mView.webview.postWebMessage(
+            webviewReadyCallbacks.add {
+                vtuberModelView.webview.postWebMessage(
                     WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]}"),
                     Uri.parse(rendererUrl)
                 )
-            })
+            }
         }
     }
 
     fun refreshView(){
-        mView.refreshDrawableState()
+        vtuberModelView.refreshDrawableState()
     }
 }
 

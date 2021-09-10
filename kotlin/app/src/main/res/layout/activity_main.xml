@@ -25,19 +25,25 @@
                 android:id="@+id/startOverlayButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Start Streamer Mode"
-                app:layout_constraintBottom_toTopOf="@+id/stopOverlayButton"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"/>
+                android:text="Start Vtuber Overlay"/>
+
+            <Button
+                android:id="@+id/startBasicOverlayButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Start Genaric Overlay"/>
+
+            <Button
+                android:id="@+id/startAllOverlayButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Start All Overlays"/>
 
             <Button
                 android:id="@+id/stopOverlayButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Stop Streamer Mode"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"/>
+                android:text="Stop All Overlays"/>
 
             <LinearLayout
                 android:layout_width="match_parent"

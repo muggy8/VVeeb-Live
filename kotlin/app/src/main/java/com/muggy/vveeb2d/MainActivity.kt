@@ -25,15 +25,32 @@ class MainActivity : AppCompatActivity() {
     var modelY:Float = 0.0f
     var modelZoom:Float = 0.0f
 
-    @SuppressLint("JavascriptInterface")
+    var overlayStartedCallbacks:MutableList<(()->Unit)> = mutableListOf()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         var self = this
 
         setContentView(R.layout.activity_main)
-        startOverlayButton.setOnClickListener { startOverlay() }
+        startOverlayButton.setOnClickListener {
+            overlayStartedCallbacks.add({ startVtuberMode() })
+            startOverlay()
+        }
 
-        stopOverlayButton.setOnClickListener { stopOverlay() }
+        startBasicOverlayButton.setOnClickListener {
+            overlayStartedCallbacks.add({ startGenaricOverlays() })
+            startOverlay()
+        }
+
+        startAllOverlayButton.setOnClickListener {
+            overlayStartedCallbacks.add({ startVtuberMode() })
+            overlayStartedCallbacks.add({ startGenaricOverlays() })
+            startOverlay()
+        }
+
+        stopOverlayButton.setOnClickListener {
+            overlayStartedCallbacks = mutableListOf()
+            stopOverlay()
+        }
 
         setViewStateToOverlaying()
 
@@ -201,13 +218,7 @@ class MainActivity : AppCompatActivity() {
             val binder = service as ForegroundService.LocalBinder
             overlayService = binder.service
             mBound = true
-            overlayService.overlay.resizeWindow(
-                overlayWidth.text.toString().toInt(),
-                overlayHeight.text.toString().toInt(),
-            )
-
-            overlayService.overlay.setTranslation(modelX, modelY)
-            overlayService.overlay.setZoom(modelZoom)
+            overlayStartedCallbacks.forEach{callback->callback()}
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -219,11 +230,15 @@ class MainActivity : AppCompatActivity() {
         stopOverlayButton.setVisibility(View.VISIBLE)
         modelPositioner.setVisibility(View.VISIBLE)
         startOverlayButton.setVisibility(View.GONE)
+        startBasicOverlayButton.setVisibility(View.GONE)
+        startAllOverlayButton.setVisibility(View.GONE)
     }
     private fun setViewStateToOverlaying(){
         stopOverlayButton.setVisibility(View.GONE)
         modelPositioner.setVisibility(View.GONE)
         startOverlayButton.setVisibility(View.VISIBLE)
+        startBasicOverlayButton.setVisibility(View.VISIBLE)
+        startAllOverlayButton.setVisibility(View.VISIBLE)
     }
 
     private fun startOverlay(){
@@ -266,6 +281,26 @@ class MainActivity : AppCompatActivity() {
             startService(foregroundServiceIntent)
         }
         bindService(foregroundServiceIntent, connection, Context.BIND_AUTO_CREATE)
+    }
+
+    private fun startVtuberMode(){
+        if (mBound){
+            overlayService.overlay.startVtuberOverlay()
+
+            overlayService.overlay.resizeWindow(
+                overlayWidth.text.toString().toInt(),
+                overlayHeight.text.toString().toInt(),
+            )
+
+            overlayService.overlay.setTranslation(modelX, modelY)
+            overlayService.overlay.setZoom(modelZoom)
+        }
+    }
+
+    private fun startGenaricOverlays(){
+        if (mBound){
+            // do something here
+        }
     }
 
     private fun stopOverlay(){
