@@ -418,6 +418,41 @@ open class MediapipeManager (
         0.0, 0.0, 1.0,
     )
 
+    val rotate90degMatrixCLW:List<Double> = listOf(
+        0.0, 1.0, 0.0,
+        -1.0, 0.0, 0.0,
+        0.0, 0.0, 0.0,
+    )
+
+    protected fun simpleMatrixMultiply(matrix1:List<Double>, matrix2:List<Double>):List<Double>{
+        // todo fix this math shinanigans
+        val matrix1a = matrix1[0]
+        val matrix1b = matrix1[1]
+        val matrix1c = matrix1[2]
+        val matrix1d = matrix1[3]
+        val matrix1e = matrix1[4]
+        val matrix1f = matrix1[5]
+        val matrix1g = matrix1[6]
+        val matrix1h = matrix1[7]
+        val matrix1i = matrix1[8]
+
+        val matrix2a = matrix2[0]
+        val matrix2b = matrix2[1]
+        val matrix2c = matrix2[2]
+        val matrix2d = matrix2[3]
+        val matrix2e = matrix2[4]
+        val matrix2f = matrix2[5]
+        val matrix2g = matrix2[6]
+        val matrix2h = matrix2[7]
+        val matrix2i = matrix2[8]
+
+        return listOf(
+            (matrix1a * matrix2a) + (matrix1b * matrix2d) + (matrix1c * matrix2g), (matrix1a * matrix2b) + (matrix1b * matrix2e) + (matrix1c * matrix2h), (matrix1a * matrix2c) + (matrix1b * matrix2f) + (matrix1c * matrix2i),
+            (matrix1d * matrix2a) + (matrix1e * matrix2d) + (matrix1f * matrix2g), (matrix1d * matrix2b) + (matrix1e * matrix2e) + (matrix1f * matrix2h), (matrix1d * matrix2c) + (matrix1e * matrix2f) + (matrix1f * matrix2i),
+            (matrix1g * matrix2a) + (matrix1h * matrix2d) + (matrix1i * matrix2g), (matrix1g * matrix2b) + (matrix1h * matrix2e) + (matrix1i * matrix2h), (matrix1g * matrix2c) + (matrix1h * matrix2f) + (matrix1i * matrix2i),
+        )
+    }
+
     fun startTracking() {
         previewDisplayView = SurfaceView(context)
         setupPreviewDisplayView()
