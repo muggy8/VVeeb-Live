@@ -411,40 +411,70 @@ open class MediapipeManager (
 
     protected var root: String = Environment.getExternalStorageDirectory().toString()
 
-    // initialize as identity matrix cuz we dont want to deal with it right now
-    var inverseTransformationMatrix:List<Double> = listOf(
+    protected val rotate90degMatrixCLW:List<Double> = listOf(
+        0.0, 1.0, 0.0,
+        -1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0,
+    )
+
+    protected val rotate90degMatrixCCLW:List<Double> = listOf(
+        0.0, -1.0, 0.0,
+        1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0,
+    )
+
+    protected val rotate180degMatrix:List<Double> = listOf(
+        -1.0, 0.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, 0.0, 1.0,
+    )
+
+    protected val identityMatrix:List<Double> = listOf(
         1.0, 0.0, 0.0,
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
     )
 
-    val rotate90degMatrixCLW:List<Double> = listOf(
-        0.0, 1.0, 0.0,
-        -1.0, 0.0, 0.0,
-        0.0, 0.0, 0.0,
-    )
+    val currentDisplay:Display? get() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            return context.display
+        }
+        else {
+            return (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+        }
+    }
 
-    protected fun simpleMatrixMultiply(matrix1:List<Double>, matrix2:List<Double>):List<Double>{
+    protected fun getScreenRotationCorrectionMatrixFromScreen(display:Display?):List<Double> {
+        when (display?.rotation){
+            Surface.ROTATION_0 -> return identityMatrix
+            Surface.ROTATION_180 -> return rotate180degMatrix
+            Surface.ROTATION_90 -> return rotate90degMatrixCCLW
+            Surface.ROTATION_270 -> return rotate90degMatrixCLW
+            else -> return identityMatrix
+        }
+    }
+
+    protected fun simpleMatrixMultiply(transformerMatrix:List<Double>, matrixToBeTransformed:List<Double>):List<Double>{
         // todo fix this math shinanigans
-        val matrix1a = matrix1[0]
-        val matrix1b = matrix1[1]
-        val matrix1c = matrix1[2]
-        val matrix1d = matrix1[3]
-        val matrix1e = matrix1[4]
-        val matrix1f = matrix1[5]
-        val matrix1g = matrix1[6]
-        val matrix1h = matrix1[7]
-        val matrix1i = matrix1[8]
+        val matrix1a = transformerMatrix[0]
+        val matrix1b = transformerMatrix[1]
+        val matrix1c = transformerMatrix[2]
+        val matrix1d = transformerMatrix[3]
+        val matrix1e = transformerMatrix[4]
+        val matrix1f = transformerMatrix[5]
+        val matrix1g = transformerMatrix[6]
+        val matrix1h = transformerMatrix[7]
+        val matrix1i = transformerMatrix[8]
 
-        val matrix2a = matrix2[0]
-        val matrix2b = matrix2[1]
-        val matrix2c = matrix2[2]
-        val matrix2d = matrix2[3]
-        val matrix2e = matrix2[4]
-        val matrix2f = matrix2[5]
-        val matrix2g = matrix2[6]
-        val matrix2h = matrix2[7]
-        val matrix2i = matrix2[8]
+        val matrix2a = matrixToBeTransformed[0]
+        val matrix2b = matrixToBeTransformed[1]
+        val matrix2c = matrixToBeTransformed[2]
+        val matrix2d = matrixToBeTransformed[3]
+        val matrix2e = matrixToBeTransformed[4]
+        val matrix2f = matrixToBeTransformed[5]
+        val matrix2g = matrixToBeTransformed[6]
+        val matrix2h = matrixToBeTransformed[7]
+        val matrix2i = matrixToBeTransformed[8]
 
         return listOf(
             (matrix1a * matrix2a) + (matrix1b * matrix2d) + (matrix1c * matrix2g), (matrix1a * matrix2b) + (matrix1b * matrix2e) + (matrix1c * matrix2h), (matrix1a * matrix2c) + (matrix1b * matrix2f) + (matrix1c * matrix2i),
@@ -519,7 +549,7 @@ open class MediapipeManager (
 //                    e.printStackTrace();
 //                }
 
-
+                println("current display rotation: ${currentDisplay?.rotation}, ${Surface.ROTATION_270}")
                 var pointsForEyeTracking = PointsOfIntrest(
                     getLandmark(landmarks, POINT_NOSE_TIP),
                     getLandmark(landmarks, POINT_NOSE_RIGHT),
@@ -552,6 +582,7 @@ open class MediapipeManager (
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_F),
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_G),
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_H),
+                    getScreenRotationCorrectionMatrixFromScreen(currentDisplay),
                 )
                 pointsForEyeTracking.irisLeft = getLandmark(landmarks, POINT_IRIS_LEFT)
                 pointsForEyeTracking.irisLeftTop = getLandmark(landmarks, POINT_IRIS_LEFT_TOP)
@@ -656,15 +687,10 @@ open class MediapipeManager (
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_F),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_G),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_H),
+                    getScreenRotationCorrectionMatrixFromScreen(currentDisplay),
                     rotationMatrix,
                 )
             )
-
-            inverseTransformationMatrix = inverse3x3Matrix(listOf(
-                poseTransformMatrix.getPackedData(0), poseTransformMatrix.getPackedData(4), poseTransformMatrix.getPackedData(8),
-                poseTransformMatrix.getPackedData(1), poseTransformMatrix.getPackedData(5), poseTransformMatrix.getPackedData(9),
-                poseTransformMatrix.getPackedData(2), poseTransformMatrix.getPackedData(6), poseTransformMatrix.getPackedData(10)
-            ).map {number->number.toDouble()})
 
 //            Log.d(
 //                TAG,
@@ -768,107 +794,175 @@ open class MediapipeManager (
 
     // points of intrest
     class PointsOfIntrest(
-        val noseTip: Vector3,
-        val noseLeft: Vector3,
-        val noseRight: Vector3,
-        val lipTop: Vector3,
-        val lipBottom: Vector3,
-        val mouthLeft: Vector3,
-        val mouthRight: Vector3,
-        val headTop: Vector3,
-        val chin: Vector3,
-        val noseBridgeLeft: Vector3,
-        val noseBridgeRight: Vector3,
-        val noseBridgeCenter: Vector3,
-        val faceMeasureLeft: Vector3,
-        val faceMeasureRight: Vector3,
-        val leftEyelidTop: Vector3,
-        val leftEyelidBottom: Vector3,
-        val leftEyelidInner: Vector3,
-        val leftEyelidOuter: Vector3,
-        val rightEyelidTop: Vector3,
-        val rightEyelidBottom: Vector3,
-        val rightEyelidInner: Vector3,
-        val rightEyelidOuter: Vector3,
-        val eyeAvarageA: Vector3,
-        val eyeAvarageB: Vector3,
-        val eyeAvarageC: Vector3,
-        val eyeAvarageD: Vector3,
-        val eyeAvarageE: Vector3,
-        val eyeAvarageF: Vector3,
-        val eyeAvarageG: Vector3,
-        val eyeAvarageH: Vector3,
+        private val noseTipRaw: Vector3,
+        private val noseLeftRaw: Vector3,
+        private val noseRightRaw: Vector3,
+        private val lipTopRaw: Vector3,
+        private val lipBottomRaw: Vector3,
+        private val mouthLeftRaw: Vector3,
+        private val mouthRightRaw: Vector3,
+        private val headTopRaw: Vector3,
+        private val chinRaw: Vector3,
+        private val noseBridgeLeftRaw: Vector3,
+        private val noseBridgeRightRaw: Vector3,
+        private val noseBridgeCenterRaw: Vector3,
+        private val faceMeasureLeftRaw: Vector3,
+        private val faceMeasureRightRaw: Vector3,
+        private val leftEyelidTopRaw: Vector3,
+        private val leftEyelidBottomRaw: Vector3,
+        private val leftEyelidInnerRaw: Vector3,
+        private val leftEyelidOuterRaw: Vector3,
+        private val rightEyelidTopRaw: Vector3,
+        private val rightEyelidBottomRaw: Vector3,
+        private val rightEyelidInnerRaw: Vector3,
+        private val rightEyelidOuterRaw: Vector3,
+        private val eyeAvarageARaw: Vector3,
+        private val eyeAvarageBRaw: Vector3,
+        private val eyeAvarageCRaw: Vector3,
+        private val eyeAvarageDRaw: Vector3,
+        private val eyeAvarageERaw: Vector3,
+        private val eyeAvarageFRaw: Vector3,
+        private val eyeAvarageGRaw: Vector3,
+        private val eyeAvarageHRaw: Vector3,
         // rotation matrix is optional
+        protected val screenCorrectionMatrix: List<Double>,
         protected val rotationMatrix: List<Double> = listOf(1.0,0.0,0.0,  0.0,1.0,0.0,  0.0,0.0,1.0)
     ){
-        lateinit var irisRight: Vector3
-        lateinit var irisRightTop: Vector3
-        lateinit var irisRightBottom: Vector3
+        private var irisRightRaw:Vector3 = Vector3(0f,0f,0f)
+        var irisRight: Vector3
+            get() = transformPoint(irisRightRaw, screenCorrectionMatrix)
+            set(value:Vector3){
+                irisRightRaw = value
+            }
 
-        lateinit var irisLeft: Vector3
-        lateinit var irisLeftTop: Vector3
-        lateinit var irisLeftBottom: Vector3
+        private var irisRightTopRaw:Vector3 = Vector3(0f,0f,0f)
+        var irisRightTop: Vector3
+            get() = transformPoint(irisRightTopRaw, screenCorrectionMatrix)
+            set(value:Vector3){
+                irisRightTopRaw = value
+            }
+
+        private var irisRightBottomRaw:Vector3 = Vector3(0f,0f,0f)
+        var irisRightBottom: Vector3
+            get() = transformPoint(irisRightBottomRaw, screenCorrectionMatrix)
+            set(value:Vector3){
+                irisRightBottomRaw = value
+            }
+
+        private var irisLeftRaw:Vector3 = Vector3(0f,0f,0f)
+        var irisLeft: Vector3
+            get() = transformPoint(irisLeftRaw, screenCorrectionMatrix)
+            set(value:Vector3){
+                irisLeftRaw = value
+            }
+
+        private var irisLeftTopRaw:Vector3 = Vector3(0f,0f,0f)
+        var irisLeftTop: Vector3
+            get() = transformPoint(irisLeftTopRaw, screenCorrectionMatrix)
+            set(value:Vector3){
+                irisLeftTopRaw = value
+            }
+
+        private var irisLeftBottomRaw:Vector3 = Vector3(0f,0f,0f)
+        var irisLeftBottom: Vector3
+            get() = transformPoint(irisLeftBottomRaw, screenCorrectionMatrix)
+            set(value:Vector3){
+                irisLeftBottomRaw = value
+            }
+
+
+        // no point in having any of these exist and doing math on them until they're actually needed since we might not even use them potentially
+        val noseTip: Vector3 get() = transformPoint(noseTipRaw, screenCorrectionMatrix)
+        val noseLeft: Vector3 get() = transformPoint(noseLeftRaw, screenCorrectionMatrix)
+        val noseRight: Vector3 get() = transformPoint(noseRightRaw, screenCorrectionMatrix)
+        val lipTop: Vector3 get() = transformPoint(lipTopRaw, screenCorrectionMatrix)
+        val lipBottom: Vector3 get() = transformPoint(lipBottomRaw, screenCorrectionMatrix)
+        val mouthLeft: Vector3 get() = transformPoint(mouthLeftRaw, screenCorrectionMatrix)
+        val mouthRight: Vector3 get() = transformPoint(mouthRightRaw, screenCorrectionMatrix)
+        val headTop: Vector3 get() = transformPoint(headTopRaw, screenCorrectionMatrix)
+        val chin: Vector3 get() = transformPoint(chinRaw, screenCorrectionMatrix)
+        val noseBridgeLeft: Vector3 get() = transformPoint(noseBridgeLeftRaw, screenCorrectionMatrix)
+        val noseBridgeRight: Vector3 get() = transformPoint(noseBridgeRightRaw, screenCorrectionMatrix)
+        val noseBridgeCenter: Vector3 get() = transformPoint(noseBridgeCenterRaw, screenCorrectionMatrix)
+        val faceMeasureLeft: Vector3 get() = transformPoint(faceMeasureLeftRaw, screenCorrectionMatrix)
+        val faceMeasureRight: Vector3 get() = transformPoint(faceMeasureRightRaw, screenCorrectionMatrix)
+        val leftEyelidTop: Vector3 get() = transformPoint(leftEyelidTopRaw, screenCorrectionMatrix)
+        val leftEyelidBottom: Vector3 get() = transformPoint(leftEyelidBottomRaw, screenCorrectionMatrix)
+        val leftEyelidInner: Vector3 get() = transformPoint(leftEyelidInnerRaw, screenCorrectionMatrix)
+        val leftEyelidOuter: Vector3 get() = transformPoint(leftEyelidOuterRaw, screenCorrectionMatrix)
+        val rightEyelidTop: Vector3 get() = transformPoint(rightEyelidTopRaw, screenCorrectionMatrix)
+        val rightEyelidBottom: Vector3 get() = transformPoint(rightEyelidBottomRaw, screenCorrectionMatrix)
+        val rightEyelidInner: Vector3 get() = transformPoint(rightEyelidInnerRaw, screenCorrectionMatrix)
+        val rightEyelidOuter: Vector3 get() = transformPoint(rightEyelidOuterRaw, screenCorrectionMatrix)
+        val eyeAvarageA: Vector3 get() = transformPoint(eyeAvarageARaw, screenCorrectionMatrix)
+        val eyeAvarageB: Vector3 get() = transformPoint(eyeAvarageBRaw, screenCorrectionMatrix)
+        val eyeAvarageC: Vector3 get() = transformPoint(eyeAvarageCRaw, screenCorrectionMatrix)
+        val eyeAvarageD: Vector3 get() = transformPoint(eyeAvarageDRaw, screenCorrectionMatrix)
+        val eyeAvarageE: Vector3 get() = transformPoint(eyeAvarageERaw, screenCorrectionMatrix)
+        val eyeAvarageF: Vector3 get() = transformPoint(eyeAvarageFRaw, screenCorrectionMatrix)
+        val eyeAvarageG: Vector3 get() = transformPoint(eyeAvarageGRaw, screenCorrectionMatrix)
+        val eyeAvarageH: Vector3 get() = transformPoint(eyeAvarageHRaw, screenCorrectionMatrix)
 
         val noseTipTransformed: Vector3
-            get() = transformPoint(noseTip, rotationMatrix)
+            get() = transformPoint(transformPoint(noseTipRaw, rotationMatrix), screenCorrectionMatrix)
         val noseLeftTransformed: Vector3
-            get() = transformPoint(noseLeft, rotationMatrix)
+            get() = transformPoint(transformPoint(noseLeftRaw, rotationMatrix), screenCorrectionMatrix)
         val noseRightTransformed: Vector3
-            get() = transformPoint(noseRight, rotationMatrix)
+            get() = transformPoint(transformPoint(noseRightRaw, rotationMatrix), screenCorrectionMatrix)
         val lipTopTransformed: Vector3
-            get() = transformPoint(lipTop, rotationMatrix)
+            get() = transformPoint(transformPoint(lipTopRaw, rotationMatrix), screenCorrectionMatrix)
         val lipBottomTransformed: Vector3
-            get() = transformPoint(lipBottom, rotationMatrix)
+            get() = transformPoint(transformPoint(lipBottomRaw, rotationMatrix), screenCorrectionMatrix)
         val mouthLeftTransformed: Vector3
-            get() = transformPoint(mouthLeft, rotationMatrix)
+            get() = transformPoint(transformPoint(mouthLeftRaw, rotationMatrix), screenCorrectionMatrix)
         val mouthRightTransformed: Vector3
-            get() = transformPoint(mouthRight, rotationMatrix)
+            get() = transformPoint(transformPoint(mouthRightRaw, rotationMatrix), screenCorrectionMatrix)
         val headTopTransformed: Vector3
-            get() = transformPoint(headTop, rotationMatrix)
+            get() = transformPoint(transformPoint(headTopRaw, rotationMatrix), screenCorrectionMatrix)
         val chinTransformed: Vector3
-            get() = transformPoint(chin, rotationMatrix)
+            get() = transformPoint(transformPoint(chinRaw, rotationMatrix), screenCorrectionMatrix)
         val noseBridgeLeftTransformed: Vector3
-            get() = transformPoint(noseBridgeLeft, rotationMatrix)
+            get() = transformPoint(transformPoint(noseBridgeLeftRaw, rotationMatrix), screenCorrectionMatrix)
         val noseBridgeRightTransformed: Vector3
-            get() = transformPoint(noseBridgeRight, rotationMatrix)
+            get() = transformPoint(transformPoint(noseBridgeRightRaw, rotationMatrix), screenCorrectionMatrix)
         val noseBridgeCenterTransformed: Vector3
-            get() = transformPoint(noseBridgeCenter, rotationMatrix)
+            get() = transformPoint(transformPoint(noseBridgeCenterRaw, rotationMatrix), screenCorrectionMatrix)
         val faceMeasureLeftTransformed: Vector3
-            get() = transformPoint(faceMeasureLeft, rotationMatrix)
+            get() = transformPoint(transformPoint(faceMeasureLeftRaw, rotationMatrix), screenCorrectionMatrix)
         val faceMeasureRightTransformed: Vector3
-            get() = transformPoint(faceMeasureRight, rotationMatrix)
+            get() = transformPoint(transformPoint(faceMeasureRightRaw, rotationMatrix), screenCorrectionMatrix)
         val leftEyelidTopTransformed: Vector3
-            get() = transformPoint(leftEyelidTop, rotationMatrix)
+            get() = transformPoint(transformPoint(leftEyelidTopRaw, rotationMatrix), screenCorrectionMatrix)
         val leftEyelidBottomTransformed: Vector3
-            get() = transformPoint(leftEyelidBottom, rotationMatrix)
+            get() = transformPoint(transformPoint(leftEyelidBottomRaw, rotationMatrix), screenCorrectionMatrix)
         val leftEyelidInnerTransformed: Vector3
-            get() = transformPoint(leftEyelidInner, rotationMatrix)
+            get() = transformPoint(transformPoint(leftEyelidInnerRaw, rotationMatrix), screenCorrectionMatrix)
         val leftEyelidOuterTransformed: Vector3
-            get() = transformPoint(leftEyelidOuter, rotationMatrix)
+            get() = transformPoint(transformPoint(leftEyelidOuterRaw, rotationMatrix), screenCorrectionMatrix)
         val rightEyelidTopTransformed: Vector3
-            get() = transformPoint(rightEyelidTop, rotationMatrix)
+            get() = transformPoint(transformPoint(rightEyelidTopRaw, rotationMatrix), screenCorrectionMatrix)
         val rightEyelidBottomTransformed: Vector3
-            get() = transformPoint(rightEyelidBottom, rotationMatrix)
+            get() = transformPoint(transformPoint(rightEyelidBottomRaw, rotationMatrix), screenCorrectionMatrix)
         val rightEyelidInnerTransformed: Vector3
-            get() = transformPoint(rightEyelidInner, rotationMatrix)
+            get() = transformPoint(transformPoint(rightEyelidInnerRaw, rotationMatrix), screenCorrectionMatrix)
         val rightEyelidOuterTransformed: Vector3
-            get() = transformPoint(rightEyelidOuter, rotationMatrix)
+            get() = transformPoint(transformPoint(rightEyelidOuterRaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageATransformed: Vector3
-            get() = transformPoint(eyeAvarageA, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageARaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageBTransformed: Vector3
-            get() = transformPoint(eyeAvarageB, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageBRaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageCTransformed: Vector3
-            get() = transformPoint(eyeAvarageC, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageCRaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageDTransformed: Vector3
-            get() = transformPoint(eyeAvarageD, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageDRaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageETransformed: Vector3
-            get() = transformPoint(eyeAvarageE, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageERaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageFTransformed: Vector3
-            get() = transformPoint(eyeAvarageF, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageFRaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageGTransformed: Vector3
-            get() = transformPoint(eyeAvarageG, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageGRaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageHTransformed: Vector3
-            get() = transformPoint(eyeAvarageH, rotationMatrix)
+            get() = transformPoint(transformPoint(eyeAvarageHRaw, rotationMatrix), screenCorrectionMatrix)
 
         companion object {
             fun transformPoint(point:Vector3, transformMatrix: List<Double>):Vector3{
