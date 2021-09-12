@@ -5,12 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-
 
 class ForegroundService : Service() {
     class LocalBinder(private val instance: ForegroundService) : Binder() {
@@ -42,6 +42,11 @@ class ForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        overlay.resizeScreenOverlay()
     }
 
     override fun onDestroy() {

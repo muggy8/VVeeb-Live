@@ -30,10 +30,12 @@ import android.graphics.Color
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
     private val vtuberModelView: View
+    private val screenOverlayView: View
     private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
     private val layoutInflater: LayoutInflater
     private val rendererUrl: String
+    private val screenOverlayUrl: String
     var windowWidth: Int = 400
     var windowHeight: Int = 300
     private var mediapipeManager: MediapipeManager
@@ -44,9 +46,19 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     private var webViewIsReady:Boolean = false
     private var webviewReadyCallbacks:MutableList<(()->Unit?)> = mutableListOf()
 
+    val display:Display get() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            return context.display as Display
+        }
+        else {
+            return mWindowManager.defaultDisplay
+        }
+    }
+
     init {
         serverPort = Random.nextInt(5000, 50000)
         rendererUrl = "http://127.0.0.1:${serverPort}"
+        screenOverlayUrl = "http://127.0.0.1:${serverPort}/overlay/"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // set the layout parameters of the window
             mParams = WindowManager.LayoutParams(
@@ -63,6 +75,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         layoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         // inflating the view with the custom layout we created
         vtuberModelView = layoutInflater.inflate(R.layout.model_overlay, null)
+        screenOverlayView = layoutInflater.inflate(R.layout.screen_overlay, null)
         // set onClickListener on the remove button, which removes
         // the view from the window
         // Define the position of the
@@ -76,6 +89,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             vtuberModelView,
             {data:MediapipeManager.PointsOfIntrest->onFaceTracking(data)},
             {data:MediapipeManager.PointsOfIntrest->onEyeTracking(data)},
+            display,
         )
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
@@ -135,6 +149,46 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         mediapipeManager.startTracking()
     }
 
+    var basicOverlayStarted = false
+    var screenOverlayParams = WindowManager.LayoutParams(
+        display.width,
+        display.height,
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+        PixelFormat.OPAQUE,
+    )
+    fun startScreenOverlay(){
+        try {
+            if (screenOverlayView.windowToken == null) {
+                if (screenOverlayView.parent == null) {
+                    mWindowManager.addView(screenOverlayView, screenOverlayParams)
+                }
+            }
+
+            WebView.setWebContentsDebuggingEnabled(true);
+
+            screenOverlayView.webview.setBackgroundColor(Color.TRANSPARENT);
+            screenOverlayView.webview.loadUrl(screenOverlayUrl)
+            screenOverlayView.webview.settings.apply {
+                javaScriptEnabled = true
+                setDomStorageEnabled(true)
+            }
+            basicOverlayStarted = true
+        } catch (e: Exception) {
+            Log.d("Error1", e.toString())
+        }
+    }
+
+    fun resizeScreenOverlay(){
+        screenOverlayParams.width = display.width
+        screenOverlayParams.height = display.height
+        if (basicOverlayStarted){
+            mWindowManager.updateViewLayout(screenOverlayView, screenOverlayParams)
+        }
+    }
+
     fun close() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         if (vtuberStarted){
@@ -150,6 +204,19 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
                 // the above steps are necessary when you are adding and removing
                 // the view simultaneously, it might give some exceptions
+            } catch (e: Exception) {
+                Log.d("Error2", e.toString())
+            }
+        }
+
+        if (basicOverlayStarted){
+            try {
+                basicOverlayStarted = false
+                (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(screenOverlayView)
+                // invalidate the view
+                screenOverlayView.invalidate()
+                // remove all views
+                (screenOverlayView.parent as ViewGroup).removeAllViews()
             } catch (e: Exception) {
                 Log.d("Error2", e.toString())
             }
@@ -368,6 +435,7 @@ open class MediapipeManager (
     protected val overlayView: View,
     protected val faceTrackingCallback: (data:PointsOfIntrest)->Unit,
     protected val eyeTrackingCallback: (data:PointsOfIntrest)->Unit,
+    protected val display:Display?,
 ){
     private val TAG = "OverlayController" // for logging
 
@@ -437,15 +505,6 @@ open class MediapipeManager (
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
     )
-
-    val currentDisplay:Display? get() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
-            return context.display
-        }
-        else {
-            return (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
-        }
-    }
 
     protected fun getScreenRotationCorrectionMatrixFromScreen(display:Display?):List<Double> {
         when (display?.rotation){
@@ -584,7 +643,7 @@ open class MediapipeManager (
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_F),
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_G),
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_H),
-                    getScreenRotationCorrectionMatrixFromScreen(currentDisplay),
+                    getScreenRotationCorrectionMatrixFromScreen(display),
                 )
                 pointsForEyeTracking.irisLeft = getLandmark(landmarks, POINT_IRIS_LEFT)
                 pointsForEyeTracking.irisLeftTop = getLandmark(landmarks, POINT_IRIS_LEFT_TOP)
@@ -689,7 +748,7 @@ open class MediapipeManager (
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_F),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_G),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_H),
-                    getScreenRotationCorrectionMatrixFromScreen(currentDisplay),
+                    getScreenRotationCorrectionMatrixFromScreen(display),
                     rotationMatrix,
                 )
             )

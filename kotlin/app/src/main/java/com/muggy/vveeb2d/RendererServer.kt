@@ -73,6 +73,31 @@ class RendererServer(val port:Int, val context:Context) : NanoHTTPD(port) {
         )
     }
 
+    protected fun serveOverlay(uri:String): Response{
+        var requestedAsset = File("$root/VVeeb2D", uri)
+        if (!requestedAsset.exists()){
+            if (uri.endsWith("index.html")){
+                return newFixedLengthResponse(
+                    Response.Status.OK,
+                    getMime("/index.html"),
+                    "<html><head></head><body></body></html>"
+                )
+            }
+            else{
+                return newFixedLengthResponse(
+                    Response.Status.NOT_FOUND,
+                    getMime("data.txt"),
+                    "$uri is not found"
+                )
+            }
+        }
+        return newChunkedResponse(
+            Response.Status.OK,
+            getMime(uri),
+            requestedAsset.inputStream()
+        )
+    }
+
     protected fun getMime(uri:String) : String? {
         var mime: String? = null
         val extension = MimeTypeMap.getFileExtensionFromUrl(uri)

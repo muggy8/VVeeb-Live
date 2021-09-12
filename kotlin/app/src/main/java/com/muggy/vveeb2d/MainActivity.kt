@@ -247,7 +247,12 @@ class MainActivity : AppCompatActivity() {
         }
         var modelDir = File("${Environment.getExternalStorageDirectory()}/VVeeb2D/model/")
         if (!modelDir.exists()) {
-            modelDir.mkdirs();
+            modelDir.mkdirs()
+        }
+
+        var overlayDir = File("${Environment.getExternalStorageDirectory()}/VVeeb2D/overlay/")
+        if (!overlayDir.exists()) {
+            overlayDir.mkdirs()
         }
 
         if (!CameraPermissionHelper.hasCameraPermission(this)){
@@ -300,6 +305,7 @@ class MainActivity : AppCompatActivity() {
     private fun startGenaricOverlays(){
         if (mBound){
             // do something here
+            overlayService.overlay.startScreenOverlay()
         }
     }
 
