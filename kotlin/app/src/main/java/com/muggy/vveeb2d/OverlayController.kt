@@ -28,7 +28,6 @@ import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Color
 
-
 class OverlayController ( private val context: Context ) : LifecycleOwner {
     private val vtuberModelView: View
     private var mParams: WindowManager.LayoutParams? = null
@@ -283,21 +282,25 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             faceLRDeg = Math.toDegrees(angleX)
             faceUDDeg = Math.toDegrees(angleY)
+            val faceZ = Math.toDegrees(angleZ)
 
             val mouthCenterY = pointsOfIntrest.lipTop.middlePointFrom(pointsOfIntrest.lipBottom)
             val mouthCenterX = pointsOfIntrest.mouthLeft.middlePointFrom(pointsOfIntrest.mouthRight)
 
             val live2Dparams: String = (
-                    "{"
-                            + "\"ParamEyeLSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
-                            + "\"ParamEyeRSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
-                            + "\"ParamMouthForm\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f)},"
-                            + "\"ParamMouthOpenY\":${clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f)},"
-                            + "\"ParamAngleX\":${clamp(Math.toDegrees(angleX), -30.0, 30.0)},"
-                            + "\"ParamAngleY\":${clamp(Math.toDegrees(angleY), -30.0, 30.0)},"
-                            + "\"ParamAngleZ\":${clamp(Math.toDegrees(angleZ), -30.0, 30.0)}"
-                            + "}"
-                    )
+                "{"
+                    + "\"ParamEyeLSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
+                    + "\"ParamEyeRSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
+                    + "\"ParamMouthForm\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f)},"
+                    + "\"ParamMouthOpenY\":${clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f)},"
+                    + "\"ParamBodyAngleX\":${clamp((faceLRDeg - clamp(faceLRDeg, -30.0, 30.0))/5, -10.0, 10.0)},"
+                    + "\"ParamBodyAngleY\":${clamp((faceUDDeg - clamp(faceUDDeg, -30.0, 30.0))/5, -10.0, 10.0)},"
+                    + "\"ParamBodyAngleZ\":${clamp((faceZ - clamp(faceZ, -30.0, 30.0))/5, -10.0, 10.0)},"
+                    + "\"ParamAngleX\":${clamp(faceLRDeg, -30.0, 30.0)},"
+                    + "\"ParamAngleY\":${clamp(faceUDDeg, -30.0, 30.0)},"
+                    + "\"ParamAngleZ\":${clamp(faceZ, -30.0, 30.0)}"
+                + "}"
+            )
 
             vtuberModelView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
@@ -549,7 +552,6 @@ open class MediapipeManager (
 //                    e.printStackTrace();
 //                }
 
-                println("current display rotation: ${currentDisplay?.rotation}, ${Surface.ROTATION_270}")
                 var pointsForEyeTracking = PointsOfIntrest(
                     getLandmark(landmarks, POINT_NOSE_TIP),
                     getLandmark(landmarks, POINT_NOSE_RIGHT),
