@@ -5,6 +5,7 @@ import android.os.Environment
 import fi.iki.elonen.NanoHTTPD
 import android.webkit.MimeTypeMap
 import java.io.File
+import java.io.FileNotFoundException
 
 class RendererServer(val port:Int, val context:Context) : NanoHTTPD(port) {
     override fun serve(session: IHTTPSession): Response {
@@ -20,8 +21,19 @@ class RendererServer(val port:Int, val context:Context) : NanoHTTPD(port) {
             if (uri.startsWith("Resources/Haru/")) {
                 return serveDynamicModel(uri)
             }
+            else if (uri.startsWith("overlay")){
+                return serveOverlay(uri)
+            }
 
             return serveStaticResponse(uri)
+        }
+        catch(e: FileNotFoundException){
+            println("not found")
+            return newFixedLengthResponse(
+                Response.Status.NOT_FOUND,
+                getMime("F.txt"),
+                "Not Found"
+            )
         }
         catch (e: Exception) {
             val message = "Failed to load asset $uri because $e"
@@ -86,7 +98,7 @@ class RendererServer(val port:Int, val context:Context) : NanoHTTPD(port) {
             else{
                 return newFixedLengthResponse(
                     Response.Status.NOT_FOUND,
-                    getMime("data.txt"),
+                    getMime("F.txt"),
                     "$uri is not found"
                 )
             }

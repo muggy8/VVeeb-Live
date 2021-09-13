@@ -59,6 +59,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         serverPort = Random.nextInt(5000, 50000)
         rendererUrl = "http://127.0.0.1:${serverPort}"
         screenOverlayUrl = "http://127.0.0.1:${serverPort}/overlay/"
+//        screenOverlayUrl = "https://google.com/"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // set the layout parameters of the window
             mParams = WindowManager.LayoutParams(
@@ -68,7 +69,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                         or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                         or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.OPAQUE,
+                PixelFormat.TRANSPARENT,
             )
         }
         // getting a LayoutInflater
@@ -157,7 +158,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                 or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-        PixelFormat.OPAQUE,
+        PixelFormat.TRANSPARENT,
     )
     fun startScreenOverlay(){
         try {
