@@ -13,6 +13,7 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import kotlinx.android.synthetic.main.activity_main.*
@@ -24,6 +25,10 @@ class MainActivity : AppCompatActivity() {
     var modelX:Float = 0.0f
     var modelY:Float = 0.0f
     var modelZoom:Float = 0.0f
+    var bgR = 255
+    var bgG = 255
+    var bgB = 255
+    var bgA = 255
 
     var overlayStartedCallbacks:MutableList<(()->Unit)> = mutableListOf()
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -171,6 +176,111 @@ class MainActivity : AppCompatActivity() {
                 try { overlayService.overlay.setZoom(modelZoom) } catch (e: Exception){}
             }
         }
+
+        bgR = (CacheAccess.readString(this, "bgR"))?.toInt() ?: 255
+        bgG = (CacheAccess.readString(this, "bgG"))?.toInt() ?: 255
+        bgB = (CacheAccess.readString(this, "bgB"))?.toInt() ?: 255
+        bgA = (CacheAccess.readString(this, "bgA"))?.toInt() ?: 255
+
+        val colorRDebouncer = debounceFactory()
+        colorR.setProgress(bgR)
+        colorR.setOnSeekBarChangeListener (
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+//                    TODO("Not yet implemented")
+                    bgR = p1
+                    if (mBound) {
+                        try { overlayService.overlay.setBgColor(bgR/255f, bgG/255f, bgB/255f, bgA/255f) } catch (e: Exception){}
+                    }
+                }
+
+                override fun onStartTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                }
+
+                override fun onStopTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                    colorRDebouncer({
+                        CacheAccess.writeString(self, "bgR", bgR.toString())
+                    }, 1000)
+                }
+            }
+        )
+
+        val colorGDebouncer = debounceFactory()
+        colorG.setProgress(bgG)
+        colorG.setOnSeekBarChangeListener (
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+//                    TODO("Not yet implemented")
+                    bgG = p1
+                    if (mBound) {
+                        try { overlayService.overlay.setBgColor(bgR/255f, bgG/255f, bgB/255f, bgA/255f) } catch (e: Exception){}
+                    }
+                }
+
+                override fun onStartTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                }
+
+                override fun onStopTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                    colorGDebouncer({
+                        CacheAccess.writeString(self, "bgG", bgG.toString())
+                    }, 1000)
+                }
+            }
+        )
+
+        val colorBDebouncer = debounceFactory()
+        colorB.setProgress(bgB)
+        colorB.setOnSeekBarChangeListener (
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+//                    TODO("Not yet implemented")
+                    bgB = p1
+                    if (mBound) {
+                        try { overlayService.overlay.setBgColor(bgR/255f, bgG/255f, bgB/255f, bgA/255f) } catch (e: Exception){}
+                    }
+                }
+
+                override fun onStartTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                }
+
+                override fun onStopTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                    colorBDebouncer({
+                        CacheAccess.writeString(self, "bgB", bgB.toString())
+                    }, 1000)
+                }
+            }
+        )
+
+        val colorADebouncer = debounceFactory()
+        colorA.setProgress(bgA)
+        colorA.setOnSeekBarChangeListener (
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+//                    TODO("Not yet implemented")
+                    bgA = p1
+                    if (mBound) {
+                        try { overlayService.overlay.setBgColor(bgR/255f, bgG/255f, bgB/255f, bgA/255f) } catch (e: Exception){}
+                    }
+                }
+
+                override fun onStartTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                }
+
+                override fun onStopTrackingTouch(p0: SeekBar?) {
+//                    TODO("Not yet implemented")
+                    colorADebouncer({
+                        CacheAccess.writeString(self, "bgA", bgA.toString())
+                    }, 1000)
+                }
+            }
+        )
     }
 
     override fun onDestroy() {
@@ -229,6 +339,7 @@ class MainActivity : AppCompatActivity() {
     private fun setViewStateToNotOverlaying(){
         stopOverlayButton.setVisibility(View.VISIBLE)
         modelPositioner.setVisibility(View.VISIBLE)
+        modelBG.setVisibility(View.VISIBLE)
         startOverlayButton.setVisibility(View.GONE)
         startBasicOverlayButton.setVisibility(View.GONE)
         startAllOverlayButton.setVisibility(View.GONE)
@@ -236,6 +347,7 @@ class MainActivity : AppCompatActivity() {
     private fun setViewStateToOverlaying(){
         stopOverlayButton.setVisibility(View.GONE)
         modelPositioner.setVisibility(View.GONE)
+        modelBG.setVisibility(View.GONE)
         startOverlayButton.setVisibility(View.VISIBLE)
         startBasicOverlayButton.setVisibility(View.VISIBLE)
         startAllOverlayButton.setVisibility(View.VISIBLE)
@@ -299,6 +411,7 @@ class MainActivity : AppCompatActivity() {
 
             overlayService.overlay.setTranslation(modelX, modelY)
             overlayService.overlay.setZoom(modelZoom)
+            overlayService.overlay.setBgColor(bgR/255f, bgG/255f, bgB/255f, bgA/255f)
         }
     }
 

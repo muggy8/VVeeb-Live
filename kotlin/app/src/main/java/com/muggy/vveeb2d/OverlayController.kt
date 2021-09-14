@@ -425,6 +425,23 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         }
     }
 
+    fun setBgColor(r: Float, g:Float, b:Float, a:Float){
+        if (webViewIsReady){
+            vtuberModelView.webview.postWebMessage(
+                WebMessage("{\"type\":\"bgcolor\",\"payload\": [${r}, ${g}, ${b}, ${a}]}"),
+                Uri.parse(rendererUrl)
+            )
+        }
+        else{
+            webviewReadyCallbacks.add {
+                vtuberModelView.webview.postWebMessage(
+                    WebMessage("{\"type\":\"bgcolor\",\"payload\": [${r}, ${g}, ${b}, ${a}]}"),
+                    Uri.parse(rendererUrl)
+                )
+            }
+        }
+    }
+
     fun refreshView(){
         vtuberModelView.refreshDrawableState()
     }
