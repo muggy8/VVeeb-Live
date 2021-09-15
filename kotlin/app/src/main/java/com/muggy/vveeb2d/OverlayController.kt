@@ -27,6 +27,9 @@ import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Color
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
     private val vtuberModelView: View
@@ -463,6 +466,7 @@ open class MediapipeManager (
     protected val display:Display?,
 ){
     private val TAG = "OverlayController" // for logging
+    private val objExtendedText:String
 
     init {
         // Load all native libraries needed by the app.
@@ -472,6 +476,11 @@ open class MediapipeManager (
         } catch (e: UnsatisfiedLinkError) {
             // Some example apps (e.g. template matching) require OpenCV 4.
             System.loadLibrary("opencv_java4")
+        }
+
+        val file_name = "obj-base.txt"
+        objExtendedText = context.assets.open(file_name).bufferedReader().use{
+            it.readText()
         }
     }
 
@@ -605,36 +614,32 @@ open class MediapipeManager (
                     return@addPacketCallback
                 }
 
-//                var json = "["
-//                landmarks.landmarkList.forEach { landmark:LandmarkProto.NormalizedLandmark ->
-//                    if (json.length > 1){
-//                        json += ", "
-//                    }
-//                    val updatedPoints = PointsOfIntrest.transformPoint(Vector3(landmark.x, landmark.y, landmark.z), inverseTransformationMatrix)
-//
-//                    json += "{\"x\":${updatedPoints.x},\"y\":${updatedPoints.y},\"z\":${updatedPoints.z}}"
-//                }
-//                json += "]"
-//
-//                var saveDir = File("$root/VVeeb2D")
-//                if (!saveDir.exists()) {
-//                    saveDir.mkdirs();
-//                }
-//                val file = File(saveDir, "landmarks-eyes-4.json")
-//                if (file.exists()){
-//                    file.delete()
-//                }
-//
-//                try{
-//                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
-//                    outputStreamWriter.write(json)
-//                    outputStreamWriter.flush()
-//                    outputStreamWriter.close()
-//                }
-//                catch (e:Exception) {
-//                    println("failed to write")
-//                    e.printStackTrace();
-//                }
+                var objFile = ""
+                landmarks.landmarkList.forEach { landmark:LandmarkProto.NormalizedLandmark ->
+                    val updatedPoints = Vector3(landmark.x, landmark.y, landmark.z)
+                    objFile += "v ${updatedPoints.x} ${updatedPoints.y} ${updatedPoints.z}\n"
+                }
+                objFile += objExtendedText
+
+                var saveDir = File("$root/VVeeb2D")
+                if (!saveDir.exists()) {
+                    saveDir.mkdirs();
+                }
+                val file = File(saveDir, "landmarks.obj")
+                if (file.exists()){
+                    file.delete()
+                }
+
+                try{
+                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
+                    outputStreamWriter.write(objFile)
+                    outputStreamWriter.flush()
+                    outputStreamWriter.close()
+                }
+                catch (e:Exception) {
+                    println("failed to write")
+                    e.printStackTrace();
+                }
 
                 var pointsForEyeTracking = PointsOfIntrest(
                     getLandmark(landmarks, POINT_NOSE_TIP),
