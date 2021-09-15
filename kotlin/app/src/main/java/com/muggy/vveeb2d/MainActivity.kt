@@ -113,6 +113,29 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
         })
 
+        val modelRotationUpdateDebouncer = debounceFactory()
+        modelRotation.setText(CacheAccess.readString(self, "modelRotation") ?: "0")
+        modelRotation.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable) {
+                if (mBound){
+                    try{
+                        overlayService.overlay.setRotation(s.toString().toDouble())
+                    }
+                    catch (ouf: Error){
+                        // whatever
+                    }
+                }
+
+                modelRotationUpdateDebouncer({
+                    CacheAccess.writeString(self, "modelRotation", s.toString())
+                }, 1000)
+            }
+
+            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+        })
+
         modelX = (CacheAccess.readString(this, "modelX"))?.toFloat() ?: 0.0f
         modelY = (CacheAccess.readString(this, "modelY"))?.toFloat() ?: 0.0f
         modelZoom = (CacheAccess.readString(this, "modelZoom"))?.toFloat() ?: 0.0f
@@ -408,7 +431,7 @@ class MainActivity : AppCompatActivity() {
                 overlayWidth.text.toString().toInt(),
                 overlayHeight.text.toString().toInt(),
             )
-
+            overlayService.overlay.setRotation(modelRotation.text.toString().toDouble())
             overlayService.overlay.setTranslation(modelX, modelY)
             overlayService.overlay.setZoom(modelZoom)
             overlayService.overlay.setBgColor(bgR/255f, bgG/255f, bgB/255f, bgA/255f)

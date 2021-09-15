@@ -433,6 +433,24 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         }
     }
 
+    fun setRotation(deg:Double){
+        val rad = Math.toRadians(deg)
+        if (webViewIsReady){
+            vtuberModelView.webview.postWebMessage(
+                WebMessage("{\"type\":\"rotate\",\"payload\": ${rad}}"),
+                Uri.parse(rendererUrl)
+            )
+        }
+        else{
+            webviewReadyCallbacks.add {
+                vtuberModelView.webview.postWebMessage(
+                    WebMessage("{\"type\":\"rotate\",\"payload\": ${rad}}"),
+                    Uri.parse(rendererUrl)
+                )
+            }
+        }
+    }
+
     fun refreshView(){
         vtuberModelView.refreshDrawableState()
     }
