@@ -332,6 +332,13 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                             + "}"
                     )
 
+//            val leftEyeCenterH = pointsOfIntrest.leftEyelidInner.middlePointFrom(pointsOfIntrest.leftEyelidOuter)
+//            val rightEyeCenterH = pointsOfIntrest.rightEyelidInner.middlePointFrom(pointsOfIntrest.rightEyelidOuter)
+//
+//            val deltaLeftEyeLidFromHCenter = pointsOfIntrest.leftEyelidTop.distanceFrom(leftEyeCenterH)/leftEyeWidth
+//            var deltaRightEyeLidFromHCenter = pointsOfIntrest.rightEyelidTop.distanceFrom(rightEyeCenterH)/rightEyeWidth
+//            println("deltaLeftEyeLidFromHCenter: ${deltaLeftEyeLidFromHCenter}, deltaRightEyeLidFromHCenter: ${deltaRightEyeLidFromHCenter}")
+
             vtuberModelView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
                 Uri.parse(rendererUrl)
