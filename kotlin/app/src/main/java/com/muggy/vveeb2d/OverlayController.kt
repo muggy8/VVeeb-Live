@@ -278,30 +278,18 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             // eye lid tracking is kinda ass right now but we're just gonna make the most of what we have at the moment and try again later with a better library
             val deltaEyelidsLeft = pointsOfIntrest.leftEyelidBottom.distanceFrom(pointsOfIntrest.leftEyelidTop)
             val deltaEyelidsRight = pointsOfIntrest.rightEyelidBottom.distanceFrom(pointsOfIntrest.rightEyelidTop)
-            val eyeOpenMeasurement = (
-                    pointsOfIntrest.eyeAvarageA.distanceFrom(pointsOfIntrest.eyeAvarageB) +
-                            pointsOfIntrest.eyeAvarageC.distanceFrom(pointsOfIntrest.eyeAvarageD) +
-                            pointsOfIntrest.eyeAvarageE.distanceFrom(pointsOfIntrest.eyeAvarageF) +
-                            pointsOfIntrest.eyeAvarageG.distanceFrom(pointsOfIntrest.eyeAvarageH)
-                    ) / 4
 
-            var leftEyeOpen = deltaEyelidsLeft / (eyeOpenMeasurement)
-            var rightEyeOpen = deltaEyelidsRight / (eyeOpenMeasurement)
-            leftEyeOpen = mapNumber(leftEyeOpen, 0.75f, 0.64f, 0f, 1f)
-            leftEyeOpen = logisticBias(leftEyeOpen)
-            rightEyeOpen = mapNumber(rightEyeOpen, 0.75f, 0.64f, 0f, 1f)
-            rightEyeOpen = logisticBias(rightEyeOpen)
+            val eyeDistanceLeftConstantish = pointsOfIntrest.leftEyeMeasureA.distanceFrom(pointsOfIntrest.leftEyeMeasureB)
+            val eyeDistanceRightConstantish = pointsOfIntrest.rightEyeMeasureA.distanceFrom(pointsOfIntrest.rightEyeMeasureB)
 
-            // ratio: 0.77 or higher = open | 0.66 or lower = closed
-//            println("faceLRDeg: ${faceLRDeg} | leftEyeOpen: ${leftEyeOpen} | rightEyeOpen: ${rightEyeOpen}")
+            val openessLeft = deltaEyelidsLeft/eyeDistanceLeftConstantish
+            val openessRight = deltaEyelidsRight/eyeDistanceRightConstantish
+            val eyeOpeness = maxOf(openessLeft, openessRight)
 
-            // rigth now we cheat cuz eye tracking on mediapipe is ass v.v
-            if (faceLRDeg < -15) {
-                rightEyeOpen = leftEyeOpen
-            }
-            if (faceLRDeg > 15) {
-                leftEyeOpen = rightEyeOpen
-            }
+            // we're cheating here by locking both eyes to the same value but this might work ok in the long run
+            val eyeOpenessNormalized = logisticBias(mapNumber(eyeOpeness, 1.4f, 1.7f, 0f, 1f))
+
+//            println("openessLeft: ${openessLeft} | openessRight: ${openessRight} | eyeOpeness: ${eyeOpeness} | eyeOpenessNormalized ${eyeOpenessNormalized}")
 
             // eye gaze tracking
             val rightEyeDistanceFromCenterEdge =
@@ -330,17 +318,10 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             val live2Dparams: String = (
                     "{"
                             + "\"ParamEyeBallX\":${clamp(gazedir, -1f, 1f)},"
-                            + "\"ParamEyeLOpen\":${0f - leftEyeOpen},"
-                            + "\"ParamEyeROpen\":${0f - rightEyeOpen}"
+                            + "\"ParamEyeLOpen\":${ -1f + eyeOpenessNormalized },"
+                            + "\"ParamEyeROpen\":${ -1f + eyeOpenessNormalized }"
                             + "}"
                     )
-
-//            val leftEyeCenterH = pointsOfIntrest.leftEyelidInner.middlePointFrom(pointsOfIntrest.leftEyelidOuter)
-//            val rightEyeCenterH = pointsOfIntrest.rightEyelidInner.middlePointFrom(pointsOfIntrest.rightEyelidOuter)
-//
-//            val deltaLeftEyeLidFromHCenter = pointsOfIntrest.leftEyelidTop.distanceFrom(leftEyeCenterH)/leftEyeWidth
-//            var deltaRightEyeLidFromHCenter = pointsOfIntrest.rightEyelidTop.distanceFrom(rightEyeCenterH)/rightEyeWidth
-//            println("deltaLeftEyeLidFromHCenter: ${deltaLeftEyeLidFromHCenter}, deltaRightEyeLidFromHCenter: ${deltaRightEyeLidFromHCenter}")
 
             vtuberModelView.webview.postWebMessage(
                 WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
@@ -614,32 +595,32 @@ open class MediapipeManager (
                     return@addPacketCallback
                 }
 
-                var objFile = ""
-                landmarks.landmarkList.forEach { landmark:LandmarkProto.NormalizedLandmark ->
-                    val updatedPoints = Vector3(landmark.x, landmark.y, landmark.z)
-                    objFile += "v ${updatedPoints.x} ${updatedPoints.y} ${updatedPoints.z}\n"
-                }
-                objFile += objExtendedText
-
-                var saveDir = File("$root/VVeeb2D")
-                if (!saveDir.exists()) {
-                    saveDir.mkdirs();
-                }
-                val file = File(saveDir, "landmarks.obj")
-                if (file.exists()){
-                    file.delete()
-                }
-
-                try{
-                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
-                    outputStreamWriter.write(objFile)
-                    outputStreamWriter.flush()
-                    outputStreamWriter.close()
-                }
-                catch (e:Exception) {
-                    println("failed to write")
-                    e.printStackTrace();
-                }
+//                var objFile = ""
+//                landmarks.landmarkList.forEach { landmark:LandmarkProto.NormalizedLandmark ->
+//                    val updatedPoints = Vector3(landmark.x, landmark.y, landmark.z)
+//                    objFile += "v ${updatedPoints.x} ${updatedPoints.y} ${updatedPoints.z}\n"
+//                }
+//                objFile += objExtendedText
+//
+//                var saveDir = File("$root/VVeeb2D")
+//                if (!saveDir.exists()) {
+//                    saveDir.mkdirs();
+//                }
+//                val file = File(saveDir, "landmarks.obj")
+//                if (file.exists()){
+//                    file.delete()
+//                }
+//
+//                try{
+//                    val outputStreamWriter = OutputStreamWriter(FileOutputStream(file), "UTF-8")
+//                    outputStreamWriter.write(objFile)
+//                    outputStreamWriter.flush()
+//                    outputStreamWriter.close()
+//                }
+//                catch (e:Exception) {
+//                    println("failed to write")
+//                    e.printStackTrace();
+//                }
 
                 var pointsForEyeTracking = PointsOfIntrest(
                     getLandmark(landmarks, POINT_NOSE_TIP),
@@ -661,10 +642,14 @@ open class MediapipeManager (
                     getLandmark(landmarks, POINT_LEFT_EYE_LID_BOTTOM),
                     getLandmark(landmarks, POINT_LEFT_EYE_LID_INNER),
                     getLandmark(landmarks, POINT_LEFT_EYE_LID_OUTER),
+                    getLandmark(landmarks, POINT_LEFT_EYE_MEASURER_A),
+                    getLandmark(landmarks, POINT_LEFT_EYE_MEASURER_B),
                     getLandmark(landmarks, POINT_RIGHT_EYE_LID_TOP),
                     getLandmark(landmarks, POINT_RIGHT_EYE_LID_BOTTOM),
                     getLandmark(landmarks, POINT_RIGHT_EYE_LID_INNER),
                     getLandmark(landmarks, POINT_RIGHT_EYE_LID_OUTER),
+                    getLandmark(landmarks, POINT_RIGHT_EYE_MEASURER_A),
+                    getLandmark(landmarks, POINT_RIGHT_EYE_MEASURER_B),
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_A),
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_B),
                     getLandmark(landmarks, POINT_EYE_DISTANCE_AVARAGE_C),
@@ -766,10 +751,14 @@ open class MediapipeManager (
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_BOTTOM),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_INNER),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_LID_OUTER),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_MEASURER_A),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_LEFT_EYE_MEASURER_B),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_TOP),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_BOTTOM),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_INNER),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_LID_OUTER),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_MEASURER_A),
+                    getPoint(faceGeometry.mesh.vertexBufferList, POINT_RIGHT_EYE_MEASURER_B),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_A),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_B),
                     getPoint(faceGeometry.mesh.vertexBufferList, POINT_EYE_DISTANCE_AVARAGE_C),
@@ -903,10 +892,15 @@ open class MediapipeManager (
         private val leftEyelidBottomRaw: Vector3,
         private val leftEyelidInnerRaw: Vector3,
         private val leftEyelidOuterRaw: Vector3,
+        private val leftEyeMeasureARaw: Vector3,
+        private val leftEyeMeasureBRaw: Vector3,
         private val rightEyelidTopRaw: Vector3,
         private val rightEyelidBottomRaw: Vector3,
         private val rightEyelidInnerRaw: Vector3,
         private val rightEyelidOuterRaw: Vector3,
+        private val rightEyeMeasureARaw: Vector3,
+        private val rightEyeMeasureBRaw: Vector3,
+
         private val eyeAvarageARaw: Vector3,
         private val eyeAvarageBRaw: Vector3,
         private val eyeAvarageCRaw: Vector3,
@@ -915,6 +909,7 @@ open class MediapipeManager (
         private val eyeAvarageFRaw: Vector3,
         private val eyeAvarageGRaw: Vector3,
         private val eyeAvarageHRaw: Vector3,
+
         // rotation matrix is optional
         protected val screenCorrectionMatrix: List<Double>,
         protected val rotationMatrix: List<Double> = listOf(1.0,0.0,0.0,  0.0,1.0,0.0,  0.0,0.0,1.0)
@@ -981,10 +976,14 @@ open class MediapipeManager (
         val leftEyelidBottom: Vector3 get() = transformPoint(leftEyelidBottomRaw, screenCorrectionMatrix)
         val leftEyelidInner: Vector3 get() = transformPoint(leftEyelidInnerRaw, screenCorrectionMatrix)
         val leftEyelidOuter: Vector3 get() = transformPoint(leftEyelidOuterRaw, screenCorrectionMatrix)
+        val leftEyeMeasureA: Vector3 get() = transformPoint(leftEyeMeasureARaw, screenCorrectionMatrix)
+        val leftEyeMeasureB: Vector3 get() = transformPoint(leftEyeMeasureBRaw, screenCorrectionMatrix)
         val rightEyelidTop: Vector3 get() = transformPoint(rightEyelidTopRaw, screenCorrectionMatrix)
         val rightEyelidBottom: Vector3 get() = transformPoint(rightEyelidBottomRaw, screenCorrectionMatrix)
         val rightEyelidInner: Vector3 get() = transformPoint(rightEyelidInnerRaw, screenCorrectionMatrix)
         val rightEyelidOuter: Vector3 get() = transformPoint(rightEyelidOuterRaw, screenCorrectionMatrix)
+        val rightEyeMeasureA: Vector3 get() = transformPoint(rightEyeMeasureARaw, screenCorrectionMatrix)
+        val rightEyeMeasureB: Vector3 get() = transformPoint(rightEyeMeasureBRaw, screenCorrectionMatrix)
         val eyeAvarageA: Vector3 get() = transformPoint(eyeAvarageARaw, screenCorrectionMatrix)
         val eyeAvarageB: Vector3 get() = transformPoint(eyeAvarageBRaw, screenCorrectionMatrix)
         val eyeAvarageC: Vector3 get() = transformPoint(eyeAvarageCRaw, screenCorrectionMatrix)
@@ -1030,6 +1029,10 @@ open class MediapipeManager (
             get() = transformPoint(transformPoint(leftEyelidInnerRaw, rotationMatrix), screenCorrectionMatrix)
         val leftEyelidOuterTransformed: Vector3
             get() = transformPoint(transformPoint(leftEyelidOuterRaw, rotationMatrix), screenCorrectionMatrix)
+        val leftEyeMeasureATransformed: Vector3
+            get() = transformPoint(transformPoint(leftEyeMeasureARaw, rotationMatrix), screenCorrectionMatrix)
+        val leftEyeMeasureBTransformed: Vector3
+            get() = transformPoint(transformPoint(leftEyeMeasureBRaw, rotationMatrix), screenCorrectionMatrix)
         val rightEyelidTopTransformed: Vector3
             get() = transformPoint(transformPoint(rightEyelidTopRaw, rotationMatrix), screenCorrectionMatrix)
         val rightEyelidBottomTransformed: Vector3
@@ -1038,6 +1041,10 @@ open class MediapipeManager (
             get() = transformPoint(transformPoint(rightEyelidInnerRaw, rotationMatrix), screenCorrectionMatrix)
         val rightEyelidOuterTransformed: Vector3
             get() = transformPoint(transformPoint(rightEyelidOuterRaw, rotationMatrix), screenCorrectionMatrix)
+        val rightEyeMeasureATransformed: Vector3
+            get() = transformPoint(transformPoint(rightEyeMeasureARaw, rotationMatrix), screenCorrectionMatrix)
+        val rightEyeMeasureBTransformed: Vector3
+            get() = transformPoint(transformPoint(rightEyeMeasureBRaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageATransformed: Vector3
             get() = transformPoint(transformPoint(eyeAvarageARaw, rotationMatrix), screenCorrectionMatrix)
         val eyeAvarageBTransformed: Vector3
@@ -1093,10 +1100,16 @@ open class MediapipeManager (
     protected val POINT_LEFT_EYE_LID_BOTTOM = 374
     protected val POINT_LEFT_EYE_LID_INNER = 362
     protected val POINT_LEFT_EYE_LID_OUTER = 263
+    protected val POINT_LEFT_EYE_MEASURER_A = 253
+    protected val POINT_LEFT_EYE_MEASURER_B = 450
+
     protected val POINT_RIGHT_EYE_LID_TOP = 159
     protected val POINT_RIGHT_EYE_LID_BOTTOM = 145
     protected val POINT_RIGHT_EYE_LID_INNER = 133
     protected val POINT_RIGHT_EYE_LID_OUTER = 33
+    protected val POINT_RIGHT_EYE_MEASURER_A = 23
+    protected val POINT_RIGHT_EYE_MEASURER_B = 230
+
     protected val POINT_EYE_DISTANCE_AVARAGE_A = 197
     protected val POINT_EYE_DISTANCE_AVARAGE_B = 195
     protected val POINT_EYE_DISTANCE_AVARAGE_C = 18
