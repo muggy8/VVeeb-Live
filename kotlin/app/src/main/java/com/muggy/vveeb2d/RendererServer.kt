@@ -7,7 +7,7 @@ import android.webkit.MimeTypeMap
 import java.io.File
 import java.io.FileNotFoundException
 
-class RendererServer(val port:Int, val context:Context) : NanoHTTPD(port) {
+class OverlayHTTPServer(val port:Int, val context:Context) : NanoHTTPD(port) {
     override fun serve(session: IHTTPSession): Response {
         var uri = session.uri
         if (uri.endsWith("/")){
@@ -15,17 +15,8 @@ class RendererServer(val port:Int, val context:Context) : NanoHTTPD(port) {
         }
         uri = uri.removePrefix("/")
 
-        println("fetched: ${uri}")
-
         try {
-            if (uri.startsWith("Resources/Haru/")) {
-                return serveDynamicModel(uri)
-            }
-            else if (uri.startsWith("overlay")){
-                return serveOverlay(uri)
-            }
-
-            return serveStaticResponse(uri)
+            return serveOverlay(uri)
         }
         catch(e: FileNotFoundException){
             println("not found")
@@ -43,50 +34,50 @@ class RendererServer(val port:Int, val context:Context) : NanoHTTPD(port) {
         }
     }
 
-    protected fun serveStaticResponse(uri:String): Response{
-        return newChunkedResponse(
-            Response.Status.OK,
-            getMime(uri),
-            context.assets.open("web-renderer/$uri")
-        )
-    }
+//    protected fun serveStaticResponse(uri:String): Response{
+//        return newChunkedResponse(
+//            Response.Status.OK,
+//            getMime(uri),
+//            context.assets.open("web-renderer/$uri")
+//        )
+//    }
 
     protected var root: String = Environment.getExternalStorageDirectory().toString()
-    protected fun serveDynamicModel(uri:String): Response{
-        var correctedUri = uri.removePrefix("Resources/Haru")
-
-        var modelDir = File("$root/VVeeb2D/model/")
-        if (!modelDir.exists()) {
-            modelDir.mkdirs();
-        }
-
-        if (correctedUri.endsWith("model3.json")){
-            var updated = false
-            modelDir.listFiles().forEach { file:File ->
-                if (!updated && file.name.endsWith("model3.json")){
-                    correctedUri = correctedUri.replaceAfterLast("/", file.name)
-                }
-            }
-        }
-
-        correctedUri = correctedUri.removePrefix("/")
-
-//        println("correctedUri: ${correctedUri}")
-        val requestedAsset = File(modelDir, correctedUri)
-        if (!requestedAsset.exists()){
-            return serveStaticResponse(uri)
-        }
-//        println("requested ${uri} but actually sending ${requestedAsset}")
-
-        return newChunkedResponse(
-            Response.Status.OK,
-            getMime(uri),
-            requestedAsset.inputStream()
-        )
-    }
+//    protected fun serveDynamicModel(uri:String): Response{
+//        var correctedUri = uri.removePrefix("Resources/Haru")
+//
+//        var modelDir = File("$root/VVeeb2D/model/")
+//        if (!modelDir.exists()) {
+//            modelDir.mkdirs();
+//        }
+//
+//        if (correctedUri.endsWith("model3.json")){
+//            var updated = false
+//            modelDir.listFiles().forEach { file:File ->
+//                if (!updated && file.name.endsWith("model3.json")){
+//                    correctedUri = correctedUri.replaceAfterLast("/", file.name)
+//                }
+//            }
+//        }
+//
+//        correctedUri = correctedUri.removePrefix("/")
+//
+////        println("correctedUri: ${correctedUri}")
+//        val requestedAsset = File(modelDir, correctedUri)
+//        if (!requestedAsset.exists()){
+//            return serveStaticResponse(uri)
+//        }
+////        println("requested ${uri} but actually sending ${requestedAsset}")
+//
+//        return newChunkedResponse(
+//            Response.Status.OK,
+//            getMime(uri),
+//            requestedAsset.inputStream()
+//        )
+//    }
 
     protected fun serveOverlay(uri:String): Response{
-        var requestedAsset = File("$root/VVeeb2D", uri)
+        var requestedAsset = File("$root/VVeeb2D/overlay", uri)
         if (!requestedAsset.exists()){
             if (uri.endsWith("index.html")){
                 return newFixedLengthResponse(

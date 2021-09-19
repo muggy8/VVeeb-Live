@@ -18,8 +18,8 @@ import com.google.mediapipe.glutil.EglManager
 import kotlinx.android.synthetic.main.model_overlay.view.*
 import java.util.*
 import com.google.mediapipe.framework.PacketGetter
-import com.google.mediapipe.formats.proto.MatrixDataProto.MatrixData;
-import com.google.mediapipe.modules.facegeometry.FaceGeometryProto.FaceGeometry;
+import com.google.mediapipe.formats.proto.MatrixDataProto.MatrixData
+import com.google.mediapipe.modules.facegeometry.FaceGeometryProto.FaceGeometry
 import android.webkit.WebMessage
 import android.webkit.WebViewClient
 import androidx.core.math.MathUtils.clamp
@@ -27,20 +27,12 @@ import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Color
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStreamWriter
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
-    private val vtuberModelView: View
     private val screenOverlayView: View
-    private var mParams: WindowManager.LayoutParams? = null
     private val mWindowManager: WindowManager
     private val layoutInflater: LayoutInflater
-    private val rendererUrl: String
     private val screenOverlayUrl: String
-    var windowWidth: Int = 400
-    var windowHeight: Int = 300
     private var mediapipeManager: MediapipeManager
     private var lifecycleRegistry: LifecycleRegistry
     private var serverPort:Int
@@ -60,37 +52,22 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
     init {
         serverPort = Random.nextInt(5000, 50000)
-        rendererUrl = "http://127.0.0.1:${serverPort}"
-        screenOverlayUrl = "http://127.0.0.1:${serverPort}/overlay/"
-//        screenOverlayUrl = "https://google.com/"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // set the layout parameters of the window
-            mParams = WindowManager.LayoutParams(
-                windowWidth,
-                windowHeight,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                        or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.TRANSPARENT,
-            )
-        }
+        screenOverlayUrl = "http://127.0.0.1:${serverPort}/"
+
         // getting a LayoutInflater
         layoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         // inflating the view with the custom layout we created
-        vtuberModelView = layoutInflater.inflate(R.layout.model_overlay, null)
         screenOverlayView = layoutInflater.inflate(R.layout.screen_overlay, null)
         // set onClickListener on the remove button, which removes
         // the view from the window
         // Define the position of the
         // window within the screen
-        mParams!!.gravity = Gravity.BOTTOM or Gravity.LEFT
         mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         mediapipeManager = MediapipeManager(
             context,
             this,
-            vtuberModelView,
+            screenOverlayView,
             {data:MediapipeManager.PointsOfIntrest->onFaceTracking(data)},
             {data:MediapipeManager.PointsOfIntrest->onEyeTracking(data)},
             display,
@@ -114,43 +91,18 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         return lifecycleRegistry
     }
 
-    private lateinit var server:RendererServer
+    private lateinit var server:OverlayHTTPServer
 
     fun open() {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
         try {
-            server = RendererServer(serverPort, context)
+            server = OverlayHTTPServer(serverPort, context)
             server.start()
+            // this chunk starts the face tracking.
+            mediapipeManager.startTracking()
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }
-    }
-
-    var vtuberStarted = false
-    fun startVtuberOverlay (){
-        try {
-            if (vtuberModelView.windowToken == null) {
-                if (vtuberModelView.parent == null) {
-                    mWindowManager.addView(vtuberModelView, mParams)
-                }
-            }
-
-            WebView.setWebContentsDebuggingEnabled(true);
-
-            vtuberModelView.webview.setWebViewClient(webViewClient)
-            vtuberModelView.webview.setBackgroundColor(Color.TRANSPARENT);
-            vtuberModelView.webview.loadUrl(rendererUrl)
-            vtuberModelView.webview.settings.apply {
-                javaScriptEnabled = true
-                setDomStorageEnabled(true)
-//                    setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK)
-            }
-        } catch (e: Exception) {
-            Log.d("Error1", e.toString())
-        }
-
-        vtuberStarted = true
-        mediapipeManager.startTracking()
     }
 
     var basicOverlayStarted = false
@@ -195,23 +147,6 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
     fun close() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-        if (vtuberStarted){
-            mediapipeManager.pause()
-            vtuberStarted = false
-            try {
-                // remove the view from the window
-                (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(vtuberModelView)
-                // invalidate the view
-                vtuberModelView.invalidate()
-                // remove all views
-                (vtuberModelView.parent as ViewGroup).removeAllViews()
-
-                // the above steps are necessary when you are adding and removing
-                // the view simultaneously, it might give some exceptions
-            } catch (e: Exception) {
-                Log.d("Error2", e.toString())
-            }
-        }
 
         if (basicOverlayStarted){
             try {
@@ -273,7 +208,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     private var faceLRDeg:Double = 0.0
     private var faceUDDeg:Double = 0.0
     private fun onEyeTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-        vtuberModelView.webview.post {
+        screenOverlayView.webview.post {
 
             // eye lid tracking is kinda ass right now but we're just gonna make the most of what we have at the moment and try again later with a better library
             val deltaEyelidsLeft = pointsOfIntrest.leftEyelidBottom.distanceFrom(pointsOfIntrest.leftEyelidTop)
@@ -323,15 +258,17 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                             + "}"
                     )
 
-            vtuberModelView.webview.postWebMessage(
-                WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
-                Uri.parse(rendererUrl)
-            )
+                        if (basicOverlayStarted){
+                screenOverlayView.webview.postWebMessage(
+                    WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                    Uri.parse(screenOverlayUrl)
+                )
+            }
         }
     }
 
     private fun onFaceTracking(pointsOfIntrest: MediapipeManager.PointsOfIntrest){
-        vtuberModelView.webview.post {
+        screenOverlayView.webview.post {
             val angleX =
                 Math.atan((pointsOfIntrest.noseTipTransformed.x / pointsOfIntrest.noseTipTransformed.z).toDouble())
             val angleY =
@@ -361,98 +298,16 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                 + "}"
             )
 
-            vtuberModelView.webview.postWebMessage(
-                WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
-                Uri.parse(rendererUrl)
-            )
-
-        }
-
-
-    }
-
-    // public apis for ipc with the main activity
-    fun resizeWindow(width: Int, height: Int){
-        mParams?.width = width
-        mParams?.height = height
-        windowWidth = width
-        windowHeight = height
-
-        mWindowManager.updateViewLayout(vtuberModelView, mParams)
-    }
-
-    fun setZoom(zoom:Float){
-
-        if (webViewIsReady){
-            vtuberModelView.webview.postWebMessage(
-                WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}}"),
-                Uri.parse(rendererUrl)
-            )
-        }
-        else{
-            webviewReadyCallbacks.add {
-                vtuberModelView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"zoom\",\"payload\": ${zoom}}"),
-                    Uri.parse(rendererUrl)
+            if (basicOverlayStarted){
+                screenOverlayView.webview.postWebMessage(
+                    WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                    Uri.parse(screenOverlayUrl)
                 )
             }
-        }
-    }
 
-    fun setTranslation(x:Float, y:Float){
-        if (webViewIsReady){
-            vtuberModelView.webview.postWebMessage(
-                WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]}"),
-                Uri.parse(rendererUrl)
-            )
         }
-        else{
-            webviewReadyCallbacks.add {
-                vtuberModelView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"translate\",\"payload\": [${x}, ${y}]}"),
-                    Uri.parse(rendererUrl)
-                )
-            }
-        }
-    }
 
-    fun setBgColor(r: Float, g:Float, b:Float, a:Float){
-        if (webViewIsReady){
-            vtuberModelView.webview.postWebMessage(
-                WebMessage("{\"type\":\"bgcolor\",\"payload\": [${r}, ${g}, ${b}, ${a}]}"),
-                Uri.parse(rendererUrl)
-            )
-        }
-        else{
-            webviewReadyCallbacks.add {
-                vtuberModelView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"bgcolor\",\"payload\": [${r}, ${g}, ${b}, ${a}]}"),
-                    Uri.parse(rendererUrl)
-                )
-            }
-        }
-    }
 
-    fun setRotation(deg:Double){
-        val rad = Math.toRadians(deg)
-        if (webViewIsReady){
-            vtuberModelView.webview.postWebMessage(
-                WebMessage("{\"type\":\"rotate\",\"payload\": ${rad}}"),
-                Uri.parse(rendererUrl)
-            )
-        }
-        else{
-            webviewReadyCallbacks.add {
-                vtuberModelView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"rotate\",\"payload\": ${rad}}"),
-                    Uri.parse(rendererUrl)
-                )
-            }
-        }
-    }
-
-    fun refreshView(){
-        vtuberModelView.refreshDrawableState()
     }
 }
 
