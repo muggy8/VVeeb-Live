@@ -15,7 +15,6 @@ import androidx.lifecycle.LifecycleRegistry
 import com.google.mediapipe.components.*
 import com.google.mediapipe.framework.*
 import com.google.mediapipe.glutil.EglManager
-import kotlinx.android.synthetic.main.model_overlay.view.*
 import java.util.*
 import com.google.mediapipe.framework.PacketGetter
 import com.google.mediapipe.formats.proto.MatrixDataProto.MatrixData
@@ -27,6 +26,7 @@ import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Color
+import kotlinx.android.synthetic.main.screen_overlay.view.*
 
 class OverlayController ( private val context: Context ) : LifecycleOwner {
     private val screenOverlayView: View
@@ -99,7 +99,6 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             server = OverlayHTTPServer(serverPort, context)
             server.start()
             // this chunk starts the face tracking.
-            mediapipeManager.startTracking()
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }
@@ -132,6 +131,8 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                 setDomStorageEnabled(true)
             }
             basicOverlayStarted = true
+
+            mediapipeManager.startTracking()
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }
@@ -162,48 +163,6 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         }
         server.stop()
     }
-
-    // a list of params live2D supported params
-    //   'ParamAngleX',
-    //   'ParamAngleY',
-    //   'ParamAngleZ',
-    //   'ParamEyeLOpen',
-    //   'ParamEyeLSmile',
-    //   'ParamEyeROpen',
-    //   'ParamEyeRSmile',
-    //   'ParamEyeBallX',
-    //   'ParamEyeBallY',
-    //   'ParamEyeBallForm',
-    //   'ParamBrowLY',
-    //   'ParamBrowRY',
-    //   'ParamBrowLX',
-    //   'ParamBrowRX',
-    //   'ParamBrowLAngle',
-    //   'ParamBrowRAngle',
-    //   'ParamBrowLForm',
-    //   'ParamBrowRForm',
-    //   'ParamMouthForm',
-    //   'ParamMouthOpenY',
-    //   'ParamCheek',
-    //   'ParamBodyAngleX',
-    //   'ParamBodyAngleY',
-    //   'ParamBodyAngleZ',
-    //   'ParamBreath',
-    //   'ParamArmLA',
-    //   'ParamArmRA',
-    //   'ParamArmLB',
-    //   'ParamArmRB',
-    //   'ParamHandL',
-    //   'ParamHandR',
-    //   'ParamHairFront',
-    //   'ParamHairSide',
-    //   'ParamHairBack',
-    //   'ParamHairFluffy',
-    //   'ParamShoulderY',
-    //   'ParamBustX',
-    //   'ParamBustY',
-    //   'ParamBaseX',
-    //   'ParamBaseY',
 
     private var faceLRDeg:Double = 0.0
     private var faceUDDeg:Double = 0.0
@@ -250,7 +209,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 //            println("gazeLeftPercent: ${gazeLeftPercent} | gazeRightPercent: ${gazeRightPercent} | gazedir: ${gazedir}")
 
             // for now, we skip the stuff to do with the eyeball up down cuz eye tracking suck rn
-            val live2Dparams: String = (
+            val trackingParams: String = (
                     "{"
                             + "\"ParamEyeBallX\":${clamp(gazedir, -1f, 1f)},"
                             + "\"ParamEyeLOpen\":${ -1f + eyeOpenessNormalized },"
@@ -258,9 +217,11 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                             + "}"
                     )
 
-                        if (basicOverlayStarted){
+            println(trackingParams)
+
+            if (basicOverlayStarted){
                 screenOverlayView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                    WebMessage("{\"type\":\"params\",\"payload\": ${trackingParams}}"),
                     Uri.parse(screenOverlayUrl)
                 )
             }
@@ -283,7 +244,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             val mouthCenterY = pointsOfIntrest.lipTop.middlePointFrom(pointsOfIntrest.lipBottom)
             val mouthCenterX = pointsOfIntrest.mouthLeft.middlePointFrom(pointsOfIntrest.mouthRight)
 
-            val live2Dparams: String = (
+            val trackingParams: String = (
                 "{"
                     + "\"ParamEyeLSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
                     + "\"ParamEyeRSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
@@ -297,10 +258,12 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                     + "\"ParamAngleZ\":${clamp(faceZ, -30.0, 30.0)}"
                 + "}"
             )
+            
+            println(trackingParams)
 
             if (basicOverlayStarted){
                 screenOverlayView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"params\",\"payload\": ${live2Dparams}}"),
+                    WebMessage("{\"type\":\"params\",\"payload\": ${trackingParams}}"),
                     Uri.parse(screenOverlayUrl)
                 )
             }
@@ -368,8 +331,6 @@ open class MediapipeManager (
 
     protected val OUTPUT_FACE_GEOMETRY_STREAM_NAME:String = "multi_face_geometry"
 
-    protected var root: String = Environment.getExternalStorageDirectory().toString()
-
     protected val rotate90degMatrixCLW:List<Double> = listOf(
         0.0, 1.0, 0.0,
         -1.0, 0.0, 0.0,
@@ -435,7 +396,6 @@ open class MediapipeManager (
 
     fun startTracking() {
         previewDisplayView = SurfaceView(context)
-        setupPreviewDisplayView()
 
         // Initialize asset manager so that MediaPipe native libraries can access the app assets, e.g.,
         // binary graphs.
@@ -658,6 +618,8 @@ open class MediapipeManager (
         }
 
         resume()
+
+        setupPreviewDisplayView()
     }
 
     protected fun getPoint(pointsBuffer: List<Float>, pointIndex: Int) : Vector3{

@@ -6,6 +6,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <FrameLayout
+        android:id="@+id/preview_display_layout"
+        android:layout_width="1px"
+        android:layout_height="1px"
+        android:layout_weight="1"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+    </FrameLayout>
+
     <WebView
         android:id="@+id/webview"
         android:layout_width="match_parent"
