@@ -21,6 +21,23 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <Button
+                android:id="@+id/askForDOOAPermission"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Grant Display Over Other Apps Permission"/>
+
+            <Button
+                android:id="@+id/askForStoragePermission"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Grant Storage Access Permission"/>
+
+            <Button
+                android:id="@+id/askForCameraPermission"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Grant Camera Permission"/>
 
             <Button
                 android:id="@+id/startOverlayButton"

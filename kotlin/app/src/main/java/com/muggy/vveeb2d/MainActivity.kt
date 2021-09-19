@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.LifecycleObserver
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 
@@ -31,7 +32,21 @@ class MainActivity : AppCompatActivity() {
             setViewStateToNotOverlaying()
         }
 
+        askForCameraPermission.setOnClickListener {
+            requestCameraPermission()
+        }
+
+        askForDOOAPermission.setOnClickListener {
+            requestOverlayPermission()
+        }
+
+        askForStoragePermission.setOnClickListener {
+            requestStoragePermission()
+        }
+
         setViewStateToNotOverlaying()
+
+        udpatePermissionRequestButtonStates()
     }
 
     override fun onDestroy() {
@@ -39,34 +54,42 @@ class MainActivity : AppCompatActivity() {
         stopOverlay()
     }
 
-    private fun getOverlayPermission(){
+    private val grantedStoragePermission:Boolean get() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED ) {
+                return true
+            }
+            return false
+        } else { //permission is automatically granted on sdk<23 upon installation
+            return true
+        }
+    }
+
+    private val grantedCameraPermission:Boolean get() {
+        return CameraPermissionHelper.hasCameraPermission(this)
+    }
+
+    private val grantedOverlayPermission:Boolean get() {
+        return Settings.canDrawOverlays(this)
+    }
+
+    private fun requestStoragePermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+            1
+        )
+    }
+
+    private fun requestOverlayPermission(){
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivityForResult(intent, 12345)
         }
     }
 
-    fun isStoragePermissionGranted(): Boolean {
-        val TAG = "Storage Permission"
-        return if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-//                Log.v(TAG, "Permission is granted")
-                true
-            } else {
-//                Log.v(TAG, "Permission is revoked")
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                    1
-                )
-                false
-            }
-        } else { //permission is automatically granted on sdk<23 upon installation
-//            Log.v(TAG, "Permission is granted")
-            true
-        }
+    private fun requestCameraPermission(){
+        CameraPermissionHelper.requestCameraPermission(this)
     }
 
     private lateinit var overlayService: ForegroundService
@@ -85,32 +108,62 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    private val VIEW_STATE_NOT_OVERLAYING = 0
+    private val VIEW_STATE_OVERLAYING = 1
+    private var currentViewState:Int = 0
     private fun setViewStateToNotOverlaying(){
-        startOverlayButton.setVisibility(View.VISIBLE)
+        stopOvlayButton.setVisibility(View.GONE)
+        if (grantedOverlayPermission && grantedStoragePermission){
+            startOverlayButton.setVisibility(View.VISIBLE)
+        }
+        else {
+            startOverlayButton.setVisibility(View.GONE)
+        }
+        currentViewState = VIEW_STATE_NOT_OVERLAYING
     }
     private fun setViewStateToOverlaying(){
+        if (grantedOverlayPermission && grantedStoragePermission){
+            stopOvlayButton.setVisibility(View.VISIBLE)
+        }
+        else {
+            stopOvlayButton.setVisibility(View.GONE)
+        }
         startOverlayButton.setVisibility(View.GONE)
+        currentViewState = VIEW_STATE_OVERLAYING
+    }
+
+    private fun udpatePermissionRequestButtonStates(){
+        if (grantedStoragePermission){
+            askForStoragePermission.setVisibility(View.GONE)
+        }
+        else {
+            askForStoragePermission.setVisibility(View.VISIBLE)
+        }
+
+        if (grantedOverlayPermission){
+            askForDOOAPermission.setVisibility(View.GONE)
+        }
+        else {
+            askForDOOAPermission.setVisibility(View.VISIBLE)
+        }
+
+        if (grantedCameraPermission){
+            askForCameraPermission.setVisibility(View.GONE)
+        }
+        else {
+            askForDOOAPermission.setVisibility(View.VISIBLE)
+        }
+
+        if (currentViewState == VIEW_STATE_NOT_OVERLAYING){
+            setViewStateToNotOverlaying()
+        }
+        else if (currentViewState == VIEW_STATE_OVERLAYING){
+            setViewStateToOverlaying()
+        }
     }
 
     private fun startOverlay(){
-        if (!isStoragePermissionGranted()){
-            return
-        }
-
-        var overlayDir = File("${Environment.getExternalStorageDirectory()}/VVeeb2D/overlay/")
-        if (!overlayDir.exists()) {
-            overlayDir.mkdirs()
-        }
-
-        if (!CameraPermissionHelper.hasCameraPermission(this)){
-            CameraPermissionHelper.requestCameraPermission(this)
-            return
-        }
-        if (!Settings.canDrawOverlays(this)){
-            getOverlayPermission()
-            return
-        }
-
         setViewStateToNotOverlaying()
         startService()
     }
