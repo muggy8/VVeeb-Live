@@ -1,4 +1,4 @@
-package com.muggy.vveeb2d
+package com.muggy.vveeblive
 
 import org.junit.Test
 

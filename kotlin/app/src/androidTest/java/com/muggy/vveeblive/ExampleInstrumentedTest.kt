@@ -1,4 +1,4 @@
-package com.muggy.vveeb2d
+package com.muggy.vveeblive
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

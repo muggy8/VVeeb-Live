@@ -1,10 +1,9 @@
-package com.muggy.vveeb2d
+package com.muggy.vveeblive
 import android.content.Context
 import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.util.Log
 import android.util.Size
 import android.view.*
@@ -114,7 +113,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                 or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
         PixelFormat.TRANSPARENT,
     )
-    fun startScreenOverlay(){
+    fun startScreenOverlay(hasCameraPermission:Boolean){
         try {
             if (screenOverlayView.windowToken == null) {
                 if (screenOverlayView.parent == null) {
@@ -132,7 +131,9 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             }
             basicOverlayStarted = true
 
-            mediapipeManager.startTracking()
+            if (hasCameraPermission){
+                mediapipeManager.startTracking()
+            }
         } catch (e: Exception) {
             Log.d("Error1", e.toString())
         }

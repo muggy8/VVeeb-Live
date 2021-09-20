@@ -1,12 +1,9 @@
-package com.muggy.vveeb2d
+package com.muggy.vveeblive
 
 import android.app.Activity
 import android.content.Context
 import kotlin.math.pow
 import kotlin.math.sqrt
-import android.content.SharedPreferences
-import android.content.SharedPreferences.Editor
-import android.provider.SyncStateContract
 import java.util.*
 import kotlin.collections.HashMap
 

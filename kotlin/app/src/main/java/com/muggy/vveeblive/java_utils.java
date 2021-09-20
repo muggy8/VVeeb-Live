@@ -1,4 +1,4 @@
-package com.muggy.vveeb2d;
+package com.muggy.vveeblive;
 
 /**
  * This snippet finds the intersection of two line segments.

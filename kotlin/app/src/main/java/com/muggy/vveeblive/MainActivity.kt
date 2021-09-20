@@ -1,4 +1,4 @@
-package com.muggy.vveeb2d
+package com.muggy.vveeblive
 
 import android.Manifest
 import android.content.*
@@ -6,15 +6,12 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.IBinder
 import android.provider.Settings
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.LifecycleObserver
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
@@ -100,7 +97,7 @@ class MainActivity : AppCompatActivity() {
             val binder = service as ForegroundService.LocalBinder
             overlayService = binder.service
             mBound = true
-            overlayService.overlay.startScreenOverlay()
+            overlayService.overlay.startScreenOverlay(grantedCameraPermission)
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
