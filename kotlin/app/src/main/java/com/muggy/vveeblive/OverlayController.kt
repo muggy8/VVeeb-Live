@@ -211,13 +211,11 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             // for now, we skip the stuff to do with the eyeball up down cuz eye tracking suck rn
             val trackingParams: String = (
-                    "{"
-                            + "\"EyeBallsX\":${clamp(gazedir, -1f, 1f)},"
-                            + "\"EyeLidsOpen\":${ -1f + eyeOpenessNormalized },"
-                            + "}"
-                    )
-
-            println(trackingParams)
+                "{"
+                    + "\"EyeBallsX\":${clamp(gazedir, -1f, 1f)},"
+                    + "\"EyeLidsOpen\":${ -1f + eyeOpenessNormalized }"
+                + "}"
+            )
 
             if (basicOverlayStarted){
                 screenOverlayView.webview.postWebMessage(
@@ -258,8 +256,6 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
                     + "\"HeadAngleRoll\":${clamp(faceZ, -30.0, 30.0)}"
                 + "}"
             )
-            
-            println(trackingParams)
 
             if (basicOverlayStarted){
                 screenOverlayView.webview.postWebMessage(
