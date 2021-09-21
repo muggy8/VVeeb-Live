@@ -6,12 +6,14 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.IBinder
 import android.provider.Settings
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
@@ -128,6 +130,20 @@ class MainActivity : AppCompatActivity() {
         }
         startOverlayButton.setVisibility(View.GONE)
         currentViewState = VIEW_STATE_OVERLAYING
+    }
+
+    protected var root: String = Environment.getExternalStorageDirectory().toString()
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        udpatePermissionRequestButtonStates()
+
+        if (grantedCameraPermission){
+            var overlayContainerRout = File("$root/VVeebLive/overlay/")
+            if (!overlayContainerRout.exists()){
+                overlayContainerRout.mkdirs()
+            }
+        }
     }
 
     private fun udpatePermissionRequestButtonStates(){

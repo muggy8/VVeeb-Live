@@ -57,7 +57,7 @@
         android:id="@+id/debugText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Place your overlay in {storage}/VVeeb2D/overlay\n\n"
+        android:text="Place your overlay in {storage}/VVeebLive/overlay\n"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/scrollView2"
         app:layout_constraintStart_toStartOf="parent"

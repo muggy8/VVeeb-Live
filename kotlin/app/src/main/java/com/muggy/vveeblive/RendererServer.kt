@@ -77,7 +77,7 @@ class OverlayHTTPServer(val port:Int, val context:Context) : NanoHTTPD(port) {
 //    }
 
     protected fun serveOverlay(uri:String): Response{
-        var requestedAsset = File("$root/VVeeb2D/overlay", uri)
+        var requestedAsset = File("$root/VVeebLive/overlay", uri)
         if (!requestedAsset.exists()){
             if (uri.endsWith("index.html")){
                 return newFixedLengthResponse(

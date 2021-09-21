@@ -212,9 +212,8 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             // for now, we skip the stuff to do with the eyeball up down cuz eye tracking suck rn
             val trackingParams: String = (
                     "{"
-                            + "\"ParamEyeBallX\":${clamp(gazedir, -1f, 1f)},"
-                            + "\"ParamEyeLOpen\":${ -1f + eyeOpenessNormalized },"
-                            + "\"ParamEyeROpen\":${ -1f + eyeOpenessNormalized }"
+                            + "\"EyeBallsX\":${clamp(gazedir, -1f, 1f)},"
+                            + "\"EyeLidsOpen\":${ -1f + eyeOpenessNormalized },"
                             + "}"
                     )
 
@@ -222,7 +221,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             if (basicOverlayStarted){
                 screenOverlayView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"params\",\"payload\": ${trackingParams}}"),
+                    WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}"),
                     Uri.parse(screenOverlayUrl)
                 )
             }
@@ -247,16 +246,16 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             val trackingParams: String = (
                 "{"
-                    + "\"ParamEyeLSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
-                    + "\"ParamEyeRSmile\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
-                    + "\"ParamMouthForm\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f)},"
-                    + "\"ParamMouthOpenY\":${clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f)},"
-                    + "\"ParamBodyAngleX\":${clamp((faceLRDeg - clamp(faceLRDeg, -30.0, 30.0))/5, -10.0, 10.0)},"
-                    + "\"ParamBodyAngleY\":${clamp((faceUDDeg - clamp(faceUDDeg, -30.0, 30.0))/5, -10.0, 10.0)},"
-                    + "\"ParamBodyAngleZ\":${clamp((faceZ - clamp(faceZ, -30.0, 30.0))/5, -10.0, 10.0)},"
-                    + "\"ParamAngleX\":${clamp(faceLRDeg, -30.0, 30.0)},"
-                    + "\"ParamAngleY\":${clamp(faceUDDeg, -30.0, 30.0)},"
-                    + "\"ParamAngleZ\":${clamp(faceZ, -30.0, 30.0)}"
+                    + "\"EyeLeftSmiling\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
+                    + "\"EyeRightSmiling\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, 0f, 1.0f)},"
+                    + "\"MouthWidth\":${clamp((mouthCenterX.y - mouthCenterY.y) + 0.2f, -1.0f, 1.0f)},"
+                    + "\"MouthOpeness\":${clamp(logisticBias(mouthDistanceY / 6), 0.0f, 1.0f)},"
+                    + "\"BodyAngleYaw\":${clamp((faceLRDeg - clamp(faceLRDeg, -30.0, 30.0))/5, -10.0, 10.0)},"
+                    + "\"BodyAnglePitch\":${clamp((faceUDDeg - clamp(faceUDDeg, -30.0, 30.0))/5, -10.0, 10.0)},"
+                    + "\"BodyAngleRoll\":${clamp((faceZ - clamp(faceZ, -30.0, 30.0))/5, -10.0, 10.0)},"
+                    + "\"HeadAngleYaw\":${clamp(faceLRDeg, -30.0, 30.0)},"
+                    + "\"HeadAnglePitch\":${clamp(faceUDDeg, -30.0, 30.0)},"
+                    + "\"HeadAngleRoll\":${clamp(faceZ, -30.0, 30.0)}"
                 + "}"
             )
             
@@ -264,7 +263,7 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
 
             if (basicOverlayStarted){
                 screenOverlayView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"params\",\"payload\": ${trackingParams}}"),
+                    WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}"),
                     Uri.parse(screenOverlayUrl)
                 )
             }
