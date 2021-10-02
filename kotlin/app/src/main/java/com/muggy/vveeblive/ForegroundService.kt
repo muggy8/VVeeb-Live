@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Binder
@@ -33,10 +34,9 @@ class ForegroundService : Service() {
             1,
             Notification()
         )
-
         // create an instance of Window class
         // and display the content on screen
-        overlay = OverlayController(this)
+        overlay = OverlayController()
         overlay.open()
     }
 

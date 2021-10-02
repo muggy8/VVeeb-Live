@@ -31,6 +31,7 @@
         <activity
             android:name="com.muggy.vveeblive.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout"
+            android:exported="false"
             >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

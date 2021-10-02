@@ -25,22 +25,26 @@ import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Color
+import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.screen_overlay.view.*
 
-class OverlayController ( private val context: Context ) : LifecycleOwner {
-    private val screenOverlayView: View
-    private val mWindowManager: WindowManager
-    private val layoutInflater: LayoutInflater
+class OverlayController () : LifecycleOwner {
     private val screenOverlayUrl: String
-    private var mediapipeManager: MediapipeManager
     private var lifecycleRegistry: LifecycleRegistry
     private var serverPort:Int
     private var webViewClient: WebViewClient
+    private lateinit var screenOverlayView: View
+    private lateinit var mWindowManager: WindowManager
+    private lateinit var layoutInflater: LayoutInflater
+    private lateinit var mediapipeManager: MediapipeManager
+    private lateinit var context: Context
 
     private var webViewIsReady:Boolean = false
     private var webviewReadyCallbacks:MutableList<(()->Unit?)> = mutableListOf()
 
     val display:Display get() {
+//        return mWindowManager.defaultDisplay
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
             return context.display as Display
         }
@@ -53,24 +57,13 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
         serverPort = Random.nextInt(5000, 50000)
         screenOverlayUrl = "http://127.0.0.1:${serverPort}/"
 
-        // getting a LayoutInflater
-        layoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-        // inflating the view with the custom layout we created
-        screenOverlayView = layoutInflater.inflate(R.layout.screen_overlay, null)
         // set onClickListener on the remove button, which removes
         // the view from the window
         // Define the position of the
         // window within the screen
-        mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+//        mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        mediapipeManager = MediapipeManager(
-            context,
-            this,
-            screenOverlayView,
-            {data:MediapipeManager.PointsOfIntrest->onFaceTracking(data)},
-            {data:MediapipeManager.PointsOfIntrest->onEyeTracking(data)},
-            display,
-        )
+
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
 
@@ -84,6 +77,37 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
             }
 
         }
+    }
+
+    fun setup(parentContext:Context){
+        context = parentContext
+        mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+        // getting a LayoutInflater
+        layoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        // inflating the view with the custom layout we created
+        screenOverlayView = layoutInflater.inflate(R.layout.screen_overlay, null)
+
+        mediapipeManager = MediapipeManager(
+            context,
+            this,
+            screenOverlayView,
+            {data:MediapipeManager.PointsOfIntrest->onFaceTracking(data)},
+            {data:MediapipeManager.PointsOfIntrest->onEyeTracking(data)},
+            display,
+        )
+
+        screenOverlayParams = WindowManager.LayoutParams(
+            display.width,
+            display.height,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                    or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSPARENT,
+        )
+
+
     }
 
     override fun getLifecycle(): Lifecycle {
@@ -104,15 +128,9 @@ class OverlayController ( private val context: Context ) : LifecycleOwner {
     }
 
     var basicOverlayStarted = false
-    var screenOverlayParams = WindowManager.LayoutParams(
-        display.width,
-        display.height,
-        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-        PixelFormat.TRANSPARENT,
-    )
+
+    protected lateinit var screenOverlayParams:WindowManager.LayoutParams
+
     fun startScreenOverlay(hasCameraPermission:Boolean){
         try {
             if (screenOverlayView.windowToken == null) {

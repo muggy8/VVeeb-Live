@@ -93,12 +93,14 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var overlayService: ForegroundService
     private var mBound: Boolean = false
+    private val self = this
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             val binder = service as ForegroundService.LocalBinder
             overlayService = binder.service
             mBound = true
+            overlayService.overlay.setup(self)
             overlayService.overlay.startScreenOverlay(grantedCameraPermission)
         }
 
