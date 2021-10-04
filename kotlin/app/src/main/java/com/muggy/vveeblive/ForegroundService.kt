@@ -37,7 +37,6 @@ class ForegroundService : Service() {
         // create an instance of Window class
         // and display the content on screen
         overlay = OverlayController()
-        overlay.open()
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {

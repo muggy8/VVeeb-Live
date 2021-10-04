@@ -107,16 +107,6 @@ class OverlayController () : LifecycleOwner {
             PixelFormat.TRANSPARENT,
         )
 
-
-    }
-
-    override fun getLifecycle(): Lifecycle {
-        return lifecycleRegistry
-    }
-
-    private lateinit var server:OverlayHTTPServer
-
-    fun open() {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
         try {
             server = OverlayHTTPServer(serverPort, context)
@@ -126,6 +116,12 @@ class OverlayController () : LifecycleOwner {
             Log.d("Error1", e.toString())
         }
     }
+
+    override fun getLifecycle(): Lifecycle {
+        return lifecycleRegistry
+    }
+
+    private lateinit var server:OverlayHTTPServer
 
     var basicOverlayStarted = false
 
