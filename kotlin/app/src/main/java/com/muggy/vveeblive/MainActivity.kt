@@ -46,6 +46,8 @@ class MainActivity : AppCompatActivity() {
         setViewStateToNotOverlaying()
 
         udpatePermissionRequestButtonStates()
+
+        this.getExternalFilesDir("overlay")
     }
 
     override fun onDestroy() {

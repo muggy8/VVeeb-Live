@@ -15,6 +15,8 @@ class OverlayHTTPServer(val port:Int, val context:Context) : NanoHTTPD(port) {
         }
         uri = uri.removePrefix("/")
 
+//        println("absolutePath: ${context.getExternalFilesDir("overlay")}")
+
         try {
             return serveOverlay(uri)
         }
@@ -42,7 +44,7 @@ class OverlayHTTPServer(val port:Int, val context:Context) : NanoHTTPD(port) {
 //        )
 //    }
 
-    protected var root: String = Environment.getExternalStorageDirectory().toString()
+//    protected var root: String = Environment.getExternalStorageDirectory().toString()
 //    protected fun serveDynamicModel(uri:String): Response{
 //        var correctedUri = uri.removePrefix("Resources/Haru")
 //
@@ -76,8 +78,11 @@ class OverlayHTTPServer(val port:Int, val context:Context) : NanoHTTPD(port) {
 //        )
 //    }
 
+    val root = context.getExternalFilesDir("overlay")
     protected fun serveOverlay(uri:String): Response{
-        var requestedAsset = File("$root/VVeebLive/overlay", uri)
+        var requestedAsset = File(root, uri)
+        println("requestedAsset.absolutePath: ${requestedAsset.absolutePath}")
+
         if (!requestedAsset.exists()){
             if (uri.endsWith("index.html")){
                 return newFixedLengthResponse(
@@ -94,6 +99,7 @@ class OverlayHTTPServer(val port:Int, val context:Context) : NanoHTTPD(port) {
                 )
             }
         }
+
         return newChunkedResponse(
             Response.Status.OK,
             getMime(uri),
