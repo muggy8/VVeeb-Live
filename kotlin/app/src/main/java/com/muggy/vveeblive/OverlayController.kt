@@ -168,6 +168,7 @@ class OverlayController () : LifecycleOwner {
             try {
                 basicOverlayStarted = false
                 (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(screenOverlayView)
+                screenOverlayView.webview.destroy()
                 // invalidate the view
                 screenOverlayView.invalidate()
                 // remove all views
