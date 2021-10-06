@@ -81,8 +81,6 @@ class OverlayHTTPServer(val port:Int, val context:Context) : NanoHTTPD(port) {
     val root = context.getExternalFilesDir("overlay")
     protected fun serveOverlay(uri:String): Response{
         var requestedAsset = File(root, uri)
-        println("requestedAsset.absolutePath: ${requestedAsset.absolutePath}")
-
         if (!requestedAsset.exists()){
             if (uri.endsWith("index.html")){
                 return newFixedLengthResponse(

@@ -14,6 +14,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
+import android.content.pm.ResolveInfo
+
+import android.content.Intent
+
+import android.R.attr.name
+import android.widget.Toast
 
 
 class MainActivity : AppCompatActivity() {
@@ -39,31 +45,24 @@ class MainActivity : AppCompatActivity() {
             requestOverlayPermission()
         }
 
-        askForStoragePermission.setOnClickListener {
-            requestStoragePermission()
+        if (this.getExternalFilesDir("overlay") != null){
+            openOverlayLocation.setOnClickListener {
+                openFolder(Uri.parse(this.getExternalFilesDir("overlay")!!.absolutePath))
+            }
         }
+
 
         setViewStateToNotOverlaying()
 
         udpatePermissionRequestButtonStates()
 
         this.getExternalFilesDir("overlay")
+
     }
 
     override fun onDestroy() {
         super.onDestroy()
         stopOverlay()
-    }
-
-    private val grantedStoragePermission:Boolean get() {
-        if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED ) {
-                return true
-            }
-            return false
-        } else { //permission is automatically granted on sdk<23 upon installation
-            return true
-        }
     }
 
     private val grantedCameraPermission:Boolean get() {
@@ -72,14 +71,6 @@ class MainActivity : AppCompatActivity() {
 
     private val grantedOverlayPermission:Boolean get() {
         return Settings.canDrawOverlays(this)
-    }
-
-    private fun requestStoragePermission() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-            1
-        )
     }
 
     private fun requestOverlayPermission(){
@@ -117,7 +108,7 @@ class MainActivity : AppCompatActivity() {
     private var currentViewState:Int = 0
     private fun setViewStateToNotOverlaying(){
         stopOvlayButton.setVisibility(View.GONE)
-        if (grantedOverlayPermission && grantedStoragePermission){
+        if (grantedOverlayPermission){
             startOverlayButton.setVisibility(View.VISIBLE)
         }
         else {
@@ -126,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         currentViewState = VIEW_STATE_NOT_OVERLAYING
     }
     private fun setViewStateToOverlaying(){
-        if (grantedOverlayPermission && grantedStoragePermission){
+        if (grantedOverlayPermission){
             stopOvlayButton.setVisibility(View.VISIBLE)
         }
         else {
@@ -136,28 +127,13 @@ class MainActivity : AppCompatActivity() {
         currentViewState = VIEW_STATE_OVERLAYING
     }
 
-    protected var root: String = Environment.getExternalStorageDirectory().toString()
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         udpatePermissionRequestButtonStates()
-
-        if (grantedCameraPermission){
-            var overlayContainerRout = File("$root/VVeebLive/overlay/")
-            if (!overlayContainerRout.exists()){
-                overlayContainerRout.mkdirs()
-            }
-        }
     }
 
     private fun udpatePermissionRequestButtonStates(){
-        if (grantedStoragePermission){
-            askForStoragePermission.setVisibility(View.GONE)
-        }
-        else {
-            askForStoragePermission.setVisibility(View.VISIBLE)
-        }
-
         if (grantedOverlayPermission){
             askForDOOAPermission.setVisibility(View.GONE)
         }
@@ -169,7 +145,7 @@ class MainActivity : AppCompatActivity() {
             askForCameraPermission.setVisibility(View.GONE)
         }
         else {
-            askForDOOAPermission.setVisibility(View.VISIBLE)
+            askForCameraPermission.setVisibility(View.VISIBLE)
         }
 
         if (currentViewState == VIEW_STATE_NOT_OVERLAYING){
@@ -212,5 +188,18 @@ class MainActivity : AppCompatActivity() {
             mBound = false
         }
         setViewStateToOverlaying()
+    }
+
+    fun openFolder(uri: Uri ) {
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.setDataAndType(uri, "resource/folder")
+        val pm: PackageManager = this.getPackageManager()
+        val apps = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        if (apps.size > 0) {
+            startActivity(intent)
+        }
+        else {
+            Toast.makeText(this, "You do not have an app that can open the folder location", Toast.LENGTH_SHORT).show()
+        }
     }
 }

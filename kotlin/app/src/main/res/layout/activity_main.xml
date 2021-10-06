@@ -28,12 +28,6 @@
                 android:text="Grant Display Over Other Apps Permission"/>
 
             <Button
-                android:id="@+id/askForStoragePermission"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Grant Storage Access Permission"/>
-
-            <Button
                 android:id="@+id/askForCameraPermission"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -51,13 +45,19 @@
                 android:layout_height="wrap_content"
                 android:text="Stop Overlays"/>
 
+            <Button
+                android:id="@+id/openOverlayLocation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Open Overlay Contents Folder"/>
+
         </LinearLayout>
     </ScrollView>
     <TextView
         android:id="@+id/debugText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Place your overlay in {storage}/VVeebLive/overlay\n"
+        android:text="Place your overlay in {android storage}/Android/data/com.muggy.vveeb2d/files/overlay\n"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/scrollView2"
         app:layout_constraintStart_toStartOf="parent"
