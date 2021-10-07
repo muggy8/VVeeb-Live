@@ -1,25 +1,20 @@
 package com.muggy.vveeblive
 
-import android.Manifest
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.IBinder
 import android.provider.Settings
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.File
-import android.content.pm.ResolveInfo
-
 import android.content.Intent
-
-import android.R.attr.name
+import android.webkit.PermissionRequest
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 
 
 class MainActivity : AppCompatActivity() {
@@ -131,6 +126,13 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         udpatePermissionRequestButtonStates()
+
+//        var discardList = webviewCallbacks.map { callback->callback(requestCode, permissions, grantResults) }
+
+        webviewCallbacks = (webviewCallbacks.filter { callback->
+            val callbackMatchedRequest = callback(requestCode, permissions, grantResults)
+            !callbackMatchedRequest
+        }).toMutableList()
     }
 
     private fun udpatePermissionRequestButtonStates(){
@@ -163,20 +165,16 @@ class MainActivity : AppCompatActivity() {
 
     lateinit private var foregroundServiceIntent : Intent
     private fun startService() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // check if the user has already granted
-            // the Draw over other apps permission
-            if (Settings.canDrawOverlays(this)) {
-                // start the service based on the android version
-                foregroundServiceIntent = Intent(this, ForegroundService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(foregroundServiceIntent)
-                } else {
-                    startService(foregroundServiceIntent)
-                }
+        // check if the user has already granted
+        // the Draw over other apps permission
+        if (Settings.canDrawOverlays(this)) {
+            // start the service based on the android version
+            foregroundServiceIntent = Intent(this, ForegroundService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(foregroundServiceIntent)
+            } else {
+                startService(foregroundServiceIntent)
             }
-        } else {
-            startService(foregroundServiceIntent)
         }
         bindService(foregroundServiceIntent, connection, Context.BIND_AUTO_CREATE)
     }
@@ -190,7 +188,7 @@ class MainActivity : AppCompatActivity() {
         setViewStateToOverlaying()
     }
 
-    fun openFolder(uri: Uri ) {
+    private fun openFolder(uri: Uri ) {
         val intent = Intent(Intent.ACTION_VIEW)
         intent.setDataAndType(uri, "resource/folder")
         val pm: PackageManager = this.getPackageManager()
@@ -201,5 +199,51 @@ class MainActivity : AppCompatActivity() {
         else {
             Toast.makeText(this, "You do not have an app that can open the folder location", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private var webviewCallbacks:MutableList<(requestCode: Int, permissions: Array<out String>, grantResults: IntArray)->Boolean> = mutableListOf()
+
+    fun askForWebviewPermission(request: PermissionRequest, requestedPermission: String, originalRequestCode: Int){
+        // do the request granting thingy
+        when {
+
+            // situation 1: the permission is already granted. we just answer the call and give the webview what it needs
+            ContextCompat.checkSelfPermission(
+                this,
+//                Manifest.permission.CAMERA
+                requestedPermission,
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                request.grant(request.resources)
+            }
+
+            // situation 2: we dont yet have the permission yet so we ask for it
+            else -> {
+                // setup request callbacks
+                val onRequestGrantedCallback = { requestCode: Int, permissions: Array<out String>, grantResults: IntArray ->
+                    var found = false
+                    if (requestCode == originalRequestCode) {
+                        found = true
+                        if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                            request.grant(request.resources)
+                        }
+                        else {
+                            request.deny()
+                        }
+                    }
+                    found
+                }
+
+                webviewCallbacks.add(onRequestGrantedCallback)
+
+                // make the actual request
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(requestedPermission),
+                    originalRequestCode
+                )
+            }
+
+        }
+
     }
 }

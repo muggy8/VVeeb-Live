@@ -1,4 +1,5 @@
 package com.muggy.vveeblive
+import android.Manifest
 import android.content.Context
 import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
@@ -25,31 +26,26 @@ import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Color
-import androidx.core.content.ContextCompat
+import android.webkit.WebChromeClient
 import kotlinx.android.synthetic.main.screen_overlay.view.*
+import android.webkit.PermissionRequest
 
-class OverlayController () : LifecycleOwner {
+class OverlayController : LifecycleOwner {
     private val screenOverlayUrl: String
     private var lifecycleRegistry: LifecycleRegistry
     private var serverPort:Int
-    private var webViewClient: WebViewClient
     private lateinit var screenOverlayView: View
     private lateinit var mWindowManager: WindowManager
     private lateinit var layoutInflater: LayoutInflater
     private lateinit var mediapipeManager: MediapipeManager
     private lateinit var context: Context
 
-    private var webViewIsReady:Boolean = false
-    private var webviewReadyCallbacks:MutableList<(()->Unit?)> = mutableListOf()
-
-    val display:Display get() {
+    private val display:Display get() {
 //        return mWindowManager.defaultDisplay
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
-            return context.display as Display
-        }
-        else {
-            return mWindowManager.defaultDisplay
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            context.display as Display
+        } else {
+            mWindowManager.defaultDisplay
         }
     }
 
@@ -66,17 +62,6 @@ class OverlayController () : LifecycleOwner {
 
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
-
-        webViewClient = object : WebViewClient() {
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                // do your logic
-                webViewIsReady = true
-                webviewReadyCallbacks.forEach({ callback -> callback() })
-                webviewReadyCallbacks = mutableListOf()
-            }
-
-        }
     }
 
     fun setup(parentContext:Context){
@@ -123,9 +108,9 @@ class OverlayController () : LifecycleOwner {
 
     private lateinit var server:OverlayHTTPServer
 
-    var basicOverlayStarted = false
+    private var basicOverlayStarted = false
 
-    protected lateinit var screenOverlayParams:WindowManager.LayoutParams
+    private lateinit var screenOverlayParams:WindowManager.LayoutParams
 
     fun startScreenOverlay(hasCameraPermission:Boolean){
         try {
@@ -135,14 +120,43 @@ class OverlayController () : LifecycleOwner {
                 }
             }
 
-            WebView.setWebContentsDebuggingEnabled(true);
+            WebView.setWebContentsDebuggingEnabled(true)
 
-            screenOverlayView.webview.setBackgroundColor(Color.TRANSPARENT);
-            screenOverlayView.webview.loadUrl(screenOverlayUrl)
+            screenOverlayView.webview.setBackgroundColor(Color.TRANSPARENT)
             screenOverlayView.webview.settings.apply {
                 javaScriptEnabled = true
                 setDomStorageEnabled(true)
             }
+            screenOverlayView.webview.apply {
+                setWebViewClient(WebViewClient())
+                setWebChromeClient(object : WebChromeClient() {
+                    override fun onPermissionRequest(request: PermissionRequest) {
+                        for (permission in request.resources) {
+                            when (permission) {
+
+                                "android.webkit.resource.AUDIO_CAPTURE" -> {
+                                    (context as MainActivity).askForWebviewPermission(
+                                        request,
+                                        Manifest.permission.RECORD_AUDIO,
+                                        Random.nextInt(9001)
+                                    )
+                                }
+
+                                "android.webkit.resource.VIDEO_CAPTURE" -> {
+                                    (context as MainActivity).askForWebviewPermission(
+                                        request,
+                                        Manifest.permission.CAMERA,
+                                        Random.nextInt(9001)
+                                    )
+                                }
+
+
+                            }
+                        }
+                    }
+                })
+            }
+            screenOverlayView.webview.loadUrl(screenOverlayUrl)
             basicOverlayStarted = true
 
             if (hasCameraPermission){
@@ -285,13 +299,13 @@ class OverlayController () : LifecycleOwner {
     }
 }
 
-open class MediapipeManager (
-    protected val context: Context,
-    protected val lifecycleOwner: LifecycleOwner,
-    protected val overlayView: View,
-    protected val faceTrackingCallback: (data:PointsOfIntrest)->Unit,
-    protected val eyeTrackingCallback: (data:PointsOfIntrest)->Unit,
-    protected val display:Display?,
+class MediapipeManager (
+    private val context: Context,
+    private val lifecycleOwner: LifecycleOwner,
+    private val overlayView: View,
+    private val faceTrackingCallback: (data:PointsOfIntrest)->Unit,
+    private val eyeTrackingCallback: (data:PointsOfIntrest)->Unit,
+    private val display:Display?,
 ){
     private val TAG = "OverlayController" // for logging
     private val objExtendedText:String
@@ -314,10 +328,10 @@ open class MediapipeManager (
 
     // Sends camera-preview frames into a MediaPipe graph for processing, and displays the processed
     // frames onto a {@link Surface}.
-    protected lateinit var processor: FrameProcessor
+    private lateinit var processor: FrameProcessor
 
     // Handles camera access via the {@link CameraX} Jetpack support library.
-    protected lateinit var cameraHelper: CameraXPreviewHelper
+    private lateinit var cameraHelper: CameraXPreviewHelper
 
     // {@link SurfaceTexture} where the camera-preview frames can be accessed.
     private lateinit var previewFrameTexture: SurfaceTexture
@@ -332,51 +346,51 @@ open class MediapipeManager (
     // consumed by {@link FrameProcessor} and the underlying MediaPipe graph.
     private lateinit var converter: ExternalTextureConverter
 
-    protected val EYE_TRACKING_BINARY:String = "face_mesh_and_iris_mobile.binarypb"
-    protected val INPUT_STREAM_NAME:String = "input_video"
-    protected val OUTPUT_STREAM_NAME:String = "output_video"
-    protected val FOCAL_LENGTH_STREAM_NAME:String = "focal_length_pixel"
-    protected val OUTPUT_EYE_LANDMARKS_STREAM_NAME:String = "face_landmarks_with_iris"
-    protected val FLIP_FRAMES_VERTICALLY:Boolean = true
-    protected val NUM_BUFFERS:Int = 2
+    private val EYE_TRACKING_BINARY:String = "face_mesh_and_iris_mobile.binarypb"
+    private val INPUT_STREAM_NAME:String = "input_video"
+    private val OUTPUT_STREAM_NAME:String = "output_video"
+    private val FOCAL_LENGTH_STREAM_NAME:String = "focal_length_pixel"
+    private val OUTPUT_EYE_LANDMARKS_STREAM_NAME:String = "face_landmarks_with_iris"
+    private val FLIP_FRAMES_VERTICALLY:Boolean = true
+    private val NUM_BUFFERS:Int = 2
 
-    protected val OUTPUT_FACE_GEOMETRY_STREAM_NAME:String = "multi_face_geometry"
+    private val OUTPUT_FACE_GEOMETRY_STREAM_NAME:String = "multi_face_geometry"
 
-    protected val rotate90degMatrixCLW:List<Double> = listOf(
+    private val rotate90degMatrixCLW:List<Double> = listOf(
         0.0, 1.0, 0.0,
         -1.0, 0.0, 0.0,
         0.0, 0.0, 1.0,
     )
 
-    protected val rotate90degMatrixCCLW:List<Double> = listOf(
+    private val rotate90degMatrixCCLW:List<Double> = listOf(
         0.0, -1.0, 0.0,
         1.0, 0.0, 0.0,
         0.0, 0.0, 1.0,
     )
 
-    protected val rotate180degMatrix:List<Double> = listOf(
+    private val rotate180degMatrix:List<Double> = listOf(
         -1.0, 0.0, 0.0,
         0.0, -1.0, 0.0,
         0.0, 0.0, 1.0,
     )
 
-    protected val identityMatrix:List<Double> = listOf(
+    private val identityMatrix:List<Double> = listOf(
         1.0, 0.0, 0.0,
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
     )
 
-    protected fun getScreenRotationCorrectionMatrixFromScreen(display:Display?):List<Double> {
-        when (display?.rotation){
-            Surface.ROTATION_0 -> return identityMatrix
-            Surface.ROTATION_180 -> return rotate180degMatrix
-            Surface.ROTATION_90 -> return rotate90degMatrixCCLW
-            Surface.ROTATION_270 -> return rotate90degMatrixCLW
-            else -> return identityMatrix
+    private fun getScreenRotationCorrectionMatrixFromScreen(display:Display?):List<Double> {
+        return when (display?.rotation){
+            Surface.ROTATION_0 -> identityMatrix
+            Surface.ROTATION_180 -> rotate180degMatrix
+            Surface.ROTATION_90 -> rotate90degMatrixCCLW
+            Surface.ROTATION_270 -> rotate90degMatrixCLW
+            else -> identityMatrix
         }
     }
 
-    protected fun simpleMatrixMultiply(transformerMatrix:List<Double>, matrixToBeTransformed:List<Double>):List<Double>{
+    private fun simpleMatrixMultiply(transformerMatrix:List<Double>, matrixToBeTransformed:List<Double>):List<Double>{
         // todo fix this math shinanigans
         val matrix1a = transformerMatrix[0]
         val matrix1b = transformerMatrix[1]
@@ -466,7 +480,7 @@ open class MediapipeManager (
 //                    e.printStackTrace();
 //                }
 
-                var pointsForEyeTracking = PointsOfIntrest(
+                val pointsForEyeTracking = PointsOfIntrest(
                     getLandmark(landmarks, POINT_NOSE_TIP),
                     getLandmark(landmarks, POINT_NOSE_RIGHT),
                     getLandmark(landmarks, POINT_NOSE_LEFT),
@@ -541,7 +555,7 @@ open class MediapipeManager (
 
             val faceGeometry = multiFaceGeometry.get(0)
             val poseTransformMatrix: MatrixData = faceGeometry.getPoseTransformMatrix()
-            var rotationMatrix:List<Double> = getRotationMatrix(poseTransformMatrix)
+            val rotationMatrix:List<Double> = getRotationMatrix(poseTransformMatrix)
 
 //            var json = "["
 //            for (i in 0..467) {
@@ -633,15 +647,15 @@ open class MediapipeManager (
         setupPreviewDisplayView()
     }
 
-    protected fun getPoint(pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
-        var x = pointsBuffer[pointIndex * 5]
-        var y = pointsBuffer[(pointIndex * 5) + 1]
-        var z = pointsBuffer[(pointIndex * 5) + 2]
+    private fun getPoint(pointsBuffer: List<Float>, pointIndex: Int) : Vector3{
+        val x = pointsBuffer[pointIndex * 5]
+        val y = pointsBuffer[(pointIndex * 5) + 1]
+        val z = pointsBuffer[(pointIndex * 5) + 2]
 
         return Vector3(x, y, z)
     }
 
-    protected fun getLandmark(landmarks: LandmarkProto.NormalizedLandmarkList, index: Int) : Vector3{
+    private fun getLandmark(landmarks: LandmarkProto.NormalizedLandmarkList, index: Int) : Vector3{
         val landmark = landmarks.getLandmark(index)
         return Vector3(
             landmark.x,
@@ -651,7 +665,7 @@ open class MediapipeManager (
     }
 
     // math from: https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
-    protected fun getRotationMatrix(poseTransformMatrix: MatrixData):List<Double>{
+    private fun getRotationMatrix(poseTransformMatrix: MatrixData):List<Double>{
 
         val a = poseTransformMatrix.getPackedData(0)
         val b = poseTransformMatrix.getPackedData(4)
@@ -676,7 +690,7 @@ open class MediapipeManager (
         return rotationMatrix
     }
 
-    protected fun inverse3x3Matrix(matrix:List<Double>):List<Double> {
+    private fun inverse3x3Matrix(matrix:List<Double>):List<Double> {
         // so i followed a website... i hope this works...
         // source https://www.mathsisfun.com/algebra/matrix-inverse-minors-cofactors-adjugate.html
 
@@ -763,42 +777,42 @@ open class MediapipeManager (
         private var irisRightRaw:Vector3 = Vector3(0f,0f,0f)
         var irisRight: Vector3
             get() = transformPoint(irisRightRaw, screenCorrectionMatrix)
-            set(value:Vector3){
+            set(value){
                 irisRightRaw = value
             }
 
         private var irisRightTopRaw:Vector3 = Vector3(0f,0f,0f)
         var irisRightTop: Vector3
             get() = transformPoint(irisRightTopRaw, screenCorrectionMatrix)
-            set(value:Vector3){
+            set(value){
                 irisRightTopRaw = value
             }
 
         private var irisRightBottomRaw:Vector3 = Vector3(0f,0f,0f)
         var irisRightBottom: Vector3
             get() = transformPoint(irisRightBottomRaw, screenCorrectionMatrix)
-            set(value:Vector3){
+            set(value){
                 irisRightBottomRaw = value
             }
 
         private var irisLeftRaw:Vector3 = Vector3(0f,0f,0f)
         var irisLeft: Vector3
             get() = transformPoint(irisLeftRaw, screenCorrectionMatrix)
-            set(value:Vector3){
+            set(value){
                 irisLeftRaw = value
             }
 
         private var irisLeftTopRaw:Vector3 = Vector3(0f,0f,0f)
         var irisLeftTop: Vector3
             get() = transformPoint(irisLeftTopRaw, screenCorrectionMatrix)
-            set(value:Vector3){
+            set(value){
                 irisLeftTopRaw = value
             }
 
         private var irisLeftBottomRaw:Vector3 = Vector3(0f,0f,0f)
         var irisLeftBottom: Vector3
             get() = transformPoint(irisLeftBottomRaw, screenCorrectionMatrix)
-            set(value:Vector3){
+            set(value){
                 irisLeftBottomRaw = value
             }
 
@@ -922,48 +936,48 @@ open class MediapipeManager (
         }
     }
 
-    protected val POINT_NOSE_TIP:Int = 1
-    protected val POINT_NOSE_RIGHT:Int = 36
-    protected val POINT_NOSE_LEFT:Int = 266
-    protected val POINT_LIP_TOP:Int = 12
-    protected val POINT_LIP_BOTTOM:Int = 15
-    protected val POINT_MOUTH_LEFT:Int = 292
-    protected val POINT_MOUTH_RIGHT:Int = 62
-    protected val POINT_HEAD_TOP:Int = 10
-    protected val POINT_CHIN:Int = 175
-    protected val POINT_NOSE_BRIDGE_LEFT = 362
-    protected val POINT_NOSE_BRIDGE_RIGHT = 133
-    protected val POINT_NOSE_BRIDGE_CENTER = 168
-    protected val POINT_FACE_MEASURE_LEFT = 124
-    protected val POINT_FACE_MEASURE_RIGHT = 352
-    protected val POINT_IRIS_LEFT = 473
-    protected val POINT_IRIS_LEFT_TOP = 475
-    protected val POINT_IRIS_LEFT_BOTTOM = 477
-    protected val POINT_IRIS_RIGHT = 468
-    protected val POINT_IRIS_RIGHT_TOP = 470
-    protected val POINT_IRIS_RIGHT_BOTTOM = 472
-    protected val POINT_LEFT_EYE_LID_TOP = 386
-    protected val POINT_LEFT_EYE_LID_BOTTOM = 374
-    protected val POINT_LEFT_EYE_LID_INNER = 362
-    protected val POINT_LEFT_EYE_LID_OUTER = 263
-    protected val POINT_LEFT_EYE_MEASURER_A = 253
-    protected val POINT_LEFT_EYE_MEASURER_B = 450
+    private val POINT_NOSE_TIP:Int = 1
+    private val POINT_NOSE_RIGHT:Int = 36
+    private val POINT_NOSE_LEFT:Int = 266
+    private val POINT_LIP_TOP:Int = 12
+    private val POINT_LIP_BOTTOM:Int = 15
+    private val POINT_MOUTH_LEFT:Int = 292
+    private val POINT_MOUTH_RIGHT:Int = 62
+    private val POINT_HEAD_TOP:Int = 10
+    private val POINT_CHIN:Int = 175
+    private val POINT_NOSE_BRIDGE_LEFT = 362
+    private val POINT_NOSE_BRIDGE_RIGHT = 133
+    private val POINT_NOSE_BRIDGE_CENTER = 168
+    private val POINT_FACE_MEASURE_LEFT = 124
+    private val POINT_FACE_MEASURE_RIGHT = 352
+    private val POINT_IRIS_LEFT = 473
+    private val POINT_IRIS_LEFT_TOP = 475
+    private val POINT_IRIS_LEFT_BOTTOM = 477
+    private val POINT_IRIS_RIGHT = 468
+    private val POINT_IRIS_RIGHT_TOP = 470
+    private val POINT_IRIS_RIGHT_BOTTOM = 472
+    private val POINT_LEFT_EYE_LID_TOP = 386
+    private val POINT_LEFT_EYE_LID_BOTTOM = 374
+    private val POINT_LEFT_EYE_LID_INNER = 362
+    private val POINT_LEFT_EYE_LID_OUTER = 263
+    private val POINT_LEFT_EYE_MEASURER_A = 253
+    private val POINT_LEFT_EYE_MEASURER_B = 450
 
-    protected val POINT_RIGHT_EYE_LID_TOP = 159
-    protected val POINT_RIGHT_EYE_LID_BOTTOM = 145
-    protected val POINT_RIGHT_EYE_LID_INNER = 133
-    protected val POINT_RIGHT_EYE_LID_OUTER = 33
-    protected val POINT_RIGHT_EYE_MEASURER_A = 23
-    protected val POINT_RIGHT_EYE_MEASURER_B = 230
+    private val POINT_RIGHT_EYE_LID_TOP = 159
+    private val POINT_RIGHT_EYE_LID_BOTTOM = 145
+    private val POINT_RIGHT_EYE_LID_INNER = 133
+    private val POINT_RIGHT_EYE_LID_OUTER = 33
+    private val POINT_RIGHT_EYE_MEASURER_A = 23
+    private val POINT_RIGHT_EYE_MEASURER_B = 230
 
-    protected val POINT_EYE_DISTANCE_AVARAGE_A = 197
-    protected val POINT_EYE_DISTANCE_AVARAGE_B = 195
-    protected val POINT_EYE_DISTANCE_AVARAGE_C = 18
-    protected val POINT_EYE_DISTANCE_AVARAGE_D = 200
-    protected val POINT_EYE_DISTANCE_AVARAGE_E = 5
-    protected val POINT_EYE_DISTANCE_AVARAGE_F = 195
-    protected val POINT_EYE_DISTANCE_AVARAGE_G = 9
-    protected val POINT_EYE_DISTANCE_AVARAGE_H = 8
+    private val POINT_EYE_DISTANCE_AVARAGE_A = 197
+    private val POINT_EYE_DISTANCE_AVARAGE_B = 195
+    private val POINT_EYE_DISTANCE_AVARAGE_C = 18
+    private val POINT_EYE_DISTANCE_AVARAGE_D = 200
+    private val POINT_EYE_DISTANCE_AVARAGE_E = 5
+    private val POINT_EYE_DISTANCE_AVARAGE_F = 195
+    private val POINT_EYE_DISTANCE_AVARAGE_G = 9
+    private val POINT_EYE_DISTANCE_AVARAGE_H = 8
 
 
     fun resume() {
@@ -980,14 +994,14 @@ open class MediapipeManager (
 
     fun pause() {
         converter.close()
-        previewDisplayView.setVisibility(View.GONE);
+        previewDisplayView.setVisibility(View.GONE)
     }
 
-    protected var haveAddedSidePackets:Boolean = false
-    protected fun onCameraStarted(surfaceTexture: SurfaceTexture?) {
+    private var haveAddedSidePackets:Boolean = false
+    private fun onCameraStarted(surfaceTexture: SurfaceTexture?) {
         if (surfaceTexture != null) {
             previewFrameTexture = surfaceTexture
-            previewDisplayView.setVisibility(View.VISIBLE);
+            previewDisplayView.setVisibility(View.VISIBLE)
         }
 
         if (!haveAddedSidePackets) {
@@ -1002,7 +1016,7 @@ open class MediapipeManager (
         }
     }
 
-    protected fun cameraTargetResolution(): Size? {
+    private fun cameraTargetResolution(): Size? {
         return null // No preference and let the camera (helper) decide.
     }
 
@@ -1018,17 +1032,17 @@ open class MediapipeManager (
             lifecycleOwner,
             cameraFacing, /*unusedSurfaceTexture=*/
             cameraTargetResolution()
-        );
+        )
     }
 
-    protected fun computeViewSize(width: Int, height: Int): Size {
+    private fun computeViewSize(width: Int, height: Int): Size {
         return Size(width, height)
     }
 
-    protected fun onPreviewDisplaySurfaceChanged(
+    private fun onPreviewDisplaySurfaceChanged(
         holder: SurfaceHolder, format: Int, width: Int, height: Int
     ) {
-        previewDisplayView.setVisibility(View.GONE);
+        previewDisplayView.setVisibility(View.GONE)
         // (Re-)Compute the ideal size of the camera-preview display (the area that the
         // camera-preview frames get rendered onto, potentially with scaling and rotation)
         // based on the size of the SurfaceView that contains the display.
