@@ -64,4 +64,7 @@ dependencies {
 
     // the httpserver we're gonna use
     implementation 'org.nanohttpd:nanohttpd:2.2.0'
+
+    // the audio manager cuz i'm too dumb to actually figure this out v.v
+    implementation 'com.twilio:audioswitch:1.1.2'
 }
