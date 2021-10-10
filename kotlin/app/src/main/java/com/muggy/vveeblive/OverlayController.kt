@@ -108,7 +108,6 @@ class OverlayController : LifecycleOwner {
     private var basicOverlayStarted = false
 
     private lateinit var screenOverlayParams:WindowManager.LayoutParams
-    private var messagePorts: Array<WebMessagePort> = arrayOf()
     private val rendererClient = RendererClient()
 
     fun startScreenOverlay(hasCameraPermission:Boolean){
@@ -248,10 +247,6 @@ class OverlayController : LifecycleOwner {
 
             if (basicOverlayStarted){
                 var message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}")
-                if (messagePorts.size > 0){
-                    message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}", messagePorts)
-
-                }
                 screenOverlayView.webview.postWebMessage(
                     message,
                     Uri.parse(screenOverlayUrl)
@@ -293,9 +288,6 @@ class OverlayController : LifecycleOwner {
 
             if (basicOverlayStarted){
                 var message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}")
-                if (messagePorts.size > 0){
-                    message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}", messagePorts)
-                }
 
                 screenOverlayView.webview.postWebMessage(
                     message,
