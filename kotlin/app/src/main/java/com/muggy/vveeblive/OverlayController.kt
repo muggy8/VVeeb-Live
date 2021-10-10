@@ -209,8 +209,10 @@ class OverlayController : LifecycleOwner {
             val openessRight = deltaEyelidsRight/eyeDistanceRightConstantish
             val eyeOpeness = maxOf(openessLeft, openessRight)
 
+            println("eyeOpeness: ${eyeOpeness}")
+
             // we're cheating here by locking both eyes to the same value but this might work ok in the long run
-            val eyeOpenessNormalized = logisticBias(mapNumber(eyeOpeness, 1.4f, 1.7f, 0f, 1f))
+            val eyeOpenessNormalized = logisticBias(mapNumber(eyeOpeness, 1.25f, 1.7f, 0f, 1f))
 
 //            println("openessLeft: ${openessLeft} | openessRight: ${openessRight} | eyeOpeness: ${eyeOpeness} | eyeOpenessNormalized ${eyeOpenessNormalized}")
 
