@@ -1,6 +1,7 @@
 package com.muggy.vveeblive
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
 import android.net.Uri
@@ -8,7 +9,6 @@ import android.os.Build
 import android.util.Log
 import android.util.Size
 import android.view.*
-import android.webkit.WebView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -19,16 +19,13 @@ import java.util.*
 import com.google.mediapipe.framework.PacketGetter
 import com.google.mediapipe.formats.proto.MatrixDataProto.MatrixData
 import com.google.mediapipe.modules.facegeometry.FaceGeometryProto.FaceGeometry
-import android.webkit.WebMessage
-import android.webkit.WebViewClient
 import androidx.core.math.MathUtils.clamp
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.protobuf.InvalidProtocolBufferException
 import kotlin.random.Random
 import android.graphics.Color
-import android.webkit.WebChromeClient
+import android.webkit.*
 import kotlinx.android.synthetic.main.screen_overlay.view.*
-import android.webkit.PermissionRequest
 
 class OverlayController : LifecycleOwner {
     private val screenOverlayUrl: String
@@ -111,6 +108,8 @@ class OverlayController : LifecycleOwner {
     private var basicOverlayStarted = false
 
     private lateinit var screenOverlayParams:WindowManager.LayoutParams
+    private var messagePorts: Array<WebMessagePort> = arrayOf()
+    private val rendererClient = RendererClient()
 
     fun startScreenOverlay(hasCameraPermission:Boolean){
         try {
@@ -155,6 +154,7 @@ class OverlayController : LifecycleOwner {
                         }
                     }
                 })
+                webViewClient = rendererClient
             }
             screenOverlayView.webview.loadUrl(screenOverlayUrl)
             basicOverlayStarted = true
@@ -247,8 +247,13 @@ class OverlayController : LifecycleOwner {
             )
 
             if (basicOverlayStarted){
+                var message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}")
+                if (messagePorts.size > 0){
+                    message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}", messagePorts)
+
+                }
                 screenOverlayView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}"),
+                    message,
                     Uri.parse(screenOverlayUrl)
                 )
             }
@@ -287,8 +292,13 @@ class OverlayController : LifecycleOwner {
             )
 
             if (basicOverlayStarted){
+                var message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}")
+                if (messagePorts.size > 0){
+                    message = WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}", messagePorts)
+                }
+
                 screenOverlayView.webview.postWebMessage(
-                    WebMessage("{\"type\":\"tracking\",\"payload\": ${trackingParams}}"),
+                    message,
                     Uri.parse(screenOverlayUrl)
                 )
             }
@@ -297,6 +307,24 @@ class OverlayController : LifecycleOwner {
 
 
     }
+
+    private class RendererClient : WebViewClient() {
+
+        override fun onPageFinished(view: WebView?, url: String?) {
+            super.onPageFinished(view, url)
+            onFinishCallbacks.forEach { callback -> callback() }
+        }
+
+        private val onFinishCallbacks:MutableList<()->Unit> = mutableListOf()
+        fun addOnFinishCallback(callback:(()->Unit)):()->Unit{
+            onFinishCallbacks.add(callback)
+            return {
+                val index = onFinishCallbacks.indexOf(callback)
+                onFinishCallbacks.removeAt(index)
+            }
+        }
+    }
+
 }
 
 class MediapipeManager (

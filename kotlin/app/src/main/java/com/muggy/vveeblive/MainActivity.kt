@@ -15,13 +15,8 @@ import android.content.Intent
 import android.webkit.PermissionRequest
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import com.twilio.audioswitch.AudioDevice
-import com.twilio.audioswitch.AudioSwitch
-
 
 class MainActivity : AppCompatActivity() {
-    lateinit var audioSwitch: AudioSwitch
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -50,21 +45,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-
         setViewStateToNotOverlaying()
 
         udpatePermissionRequestButtonStates()
 
         this.getExternalFilesDir("overlay")
-
-        audioSwitch  = AudioSwitch(applicationContext)
-
     }
 
     override fun onDestroy() {
         super.onDestroy()
         stopOverlay()
-        audioSwitch.stop()
     }
 
     private val grantedCameraPermission:Boolean get() {
@@ -168,35 +158,6 @@ class MainActivity : AppCompatActivity() {
     private fun startOverlay(){
         setViewStateToNotOverlaying()
         startService()
-        audioSwitch.start { audioDevices, selectedDevice ->
-            var priorityDevice = audioDevices.find { it is AudioDevice.BluetoothHeadset }
-            if (priorityDevice == null){
-                priorityDevice = audioDevices.find { it is AudioDevice.WiredHeadset }
-            }
-            if (priorityDevice == null){
-                priorityDevice = audioDevices.find { it is AudioDevice.Speakerphone }
-            }
-            if (priorityDevice == null){
-                priorityDevice = audioDevices.find { it is AudioDevice.Earpiece }
-            }
-
-            println(priorityDevice != selectedDevice)
-
-            if (priorityDevice != selectedDevice){
-                println("uwu")
-                audioSwitch.deactivate()
-                audioSwitch.selectDevice(priorityDevice)
-
-                try{
-                    audioSwitch.activate()
-                }
-                catch (e:IllegalStateException){
-                    println(e)
-                }
-
-                println("owo")
-            }
-        }
     }
 
     lateinit private var foregroundServiceIntent : Intent
@@ -222,7 +183,6 @@ class MainActivity : AppCompatActivity() {
             mBound = false
         }
         setViewStateToOverlaying()
-        audioSwitch.stop()
     }
 
     private fun openFolder(uri: Uri ) {
