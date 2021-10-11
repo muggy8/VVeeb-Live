@@ -6,3 +6,11 @@ There are various examples of overlays that you can use located in the [vveeb-ov
 
 ## About face tracking gestures
 The detected face gestures will be passed to the web page via [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage). Work In Progress
+
+
+## Todos:
+- Improve UI
+- Add Settings
+- Git Intigration
+- About view
+    - Scoial links
